@@ -2,10 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
-  const currentYear = 2026;
-
   return (
-    <footer className="bg-white border-t border-gray-200 mt-auto">
+    <footer className="bg-white border-t border-gray-200 w-full">
       <div className="max-w-6xl mx-auto px-4 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
