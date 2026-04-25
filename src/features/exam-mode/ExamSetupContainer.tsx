@@ -2,69 +2,44 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ExamConfig, ExamQuestion } from '../../types';
 import { useExamStore } from '../../stores/useExamStore';
-import { categories, subCategories, topics, getSubCategories, getTopics } from '../../data/categories';
+import { categories, getSubCategories, getTopics } from '../../data/categories';
 import { sessionManager } from '../../utils/sessionManager';
 import { questionSelector } from '../../utils/questionSelector';
 
-// Mock questions (same as quiz but without correctAnswerId/explanation for exam)
 const MOCK_QUESTIONS = [
   {
     id: 'q1',
-    topicId: 'heart-failure',
-    stem: 'A 65-year-old patient with heart failure presents with dyspnea and bilateral crackles. Which medication should the nurse administer first?',
+    topicId: 'topic-nursing-process',
+    stem: 'What is the first step of the nursing process?',
     choices: [
-      { id: 'a', text: 'Furosemide (Lasix) 40mg IV' },
-      { id: 'b', text: 'Digoxin 0.25mg PO' },
-      { id: 'c', text: 'Metoprolol 50mg PO' },
-      { id: 'd', text: 'Aspirin 325mg PO' },
+      { id: 'a', text: 'Planning' },
+      { id: 'b', text: 'Assessment' },
+      { id: 'c', text: 'Implementation' },
+      { id: 'd', text: 'Evaluation' },
     ],
-    difficulty: 'medium' as const,
+    difficulty: 'easy' as const,
   },
   {
     id: 'q2',
-    topicId: 'heart-failure',
-    stem: 'Which finding indicates that digoxin therapy is effective?',
+    topicId: 'topic-nursing-process',
+    stem: 'During which phase does the nurse set priorities and write goals?',
     choices: [
-      { id: 'a', text: 'Increased heart rate' },
-      { id: 'b', text: 'Decreased edema' },
-      { id: 'c', text: 'Improved appetite' },
-      { id: 'd', text: 'Clear breath sounds' },
+      { id: 'a', text: 'Assessment' },
+      { id: 'b', text: 'Diagnosis' },
+      { id: 'c', text: 'Planning' },
+      { id: 'd', text: 'Evaluation' },
     ],
     difficulty: 'medium' as const,
   },
   {
     id: 'q3',
-    topicId: 'hypertension',
-    stem: 'A patient with hypertension is prescribed lisinopril. What side effect should the nurse monitor for?',
+    topicId: 'topic-nursing-process',
+    stem: 'Which of the following is an example of a nursing intervention?',
     choices: [
-      { id: 'a', text: 'Hypokalemia' },
-      { id: 'b', text: 'Dry cough' },
-      { id: 'c', text: 'Tachycardia' },
-      { id: 'd', text: 'Weight gain' },
-    ],
-    difficulty: 'easy' as const,
-  },
-  {
-    id: 'q4',
-    topicId: 'mi-acs',
-    stem: 'A patient with chest pain has elevated troponin levels. What does this indicate?',
-    choices: [
-      { id: 'a', text: 'Pulmonary embolism' },
-      { id: 'b', text: 'Myocardial infarction' },
-      { id: 'c', text: 'Pericarditis' },
-      { id: 'd', text: 'Aortic dissection' },
-    ],
-    difficulty: 'easy' as const,
-  },
-  {
-    id: 'q5',
-    topicId: 'arrhythmias',
-    stem: 'Which ECG finding is characteristic of atrial fibrillation?',
-    choices: [
-      { id: 'a', text: 'Regular narrow QRS complexes' },
-      { id: 'b', text: 'Absent P waves with irregular rhythm' },
-      { id: 'c', text: 'Widened QRS complexes' },
-      { id: 'd', text: 'ST segment elevation' },
+      { id: 'a', text: 'Diagnosing pneumonia' },
+      { id: 'b', text: 'Prescribing antibiotics' },
+      { id: 'c', text: 'Administering oxygen' },
+      { id: 'd', text: 'Ordering an X-ray' },
     ],
     difficulty: 'medium' as const,
   },
@@ -79,12 +54,20 @@ export const ExamSetupContainer: React.FC = () => {
   const [topicId, setTopicId] = useState('');
   const [scope, setScope] = useState<'mixed' | 'category' | 'subCategory' | 'topic'>('mixed');
   const [questionCount] = useState(50);
-  const [timeLimit, setTimeLimit] = useState(60); // minutes
+  const [timeLimit, setTimeLimit] = useState(60);
 
   const availableSubCategories = categoryId ? getSubCategories(categoryId) : [];
   const availableTopics = subCategoryId ? getTopics(subCategoryId) : [];
 
+  const canStart =
+    scope === 'mixed' ||
+    (scope === 'category' && categoryId !== '') ||
+    (scope === 'subCategory' && categoryId !== '' && subCategoryId !== '') ||
+    (scope === 'topic' && categoryId !== '' && subCategoryId !== '' && topicId !== '');
+
   const handleStart = () => {
+    if (!canStart) return;
+
     const config: ExamConfig = {
       scope,
       scopeId: scope === 'topic' ? topicId : scope === 'subCategory' ? subCategoryId : scope === 'category' ? categoryId : undefined,
@@ -102,7 +85,6 @@ export const ExamSetupContainer: React.FC = () => {
       Math.min(questionCount, MOCK_QUESTIONS.length)
     );
 
-    // Strip answers for exam mode - NEVER send correctAnswerId
     const examQuestions: ExamQuestion[] = selected.map((q, i) => ({
       id: q.id,
       topicId: q.topicId,
@@ -152,6 +134,7 @@ export const ExamSetupContainer: React.FC = () => {
           ))}
         </div>
 
+        {/* Category */}
         {(scope === 'category' || scope === 'subCategory' || scope === 'topic') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -168,7 +151,8 @@ export const ExamSetupContainer: React.FC = () => {
           </div>
         )}
 
-        {(scope === 'subCategory' || scope === 'topic') && categoryId && (
+        {/* SubCategory - Only if category selected */}
+        {(scope === 'subCategory' || scope === 'topic') && categoryId && availableSubCategories.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">System</label>
             <select
@@ -184,7 +168,8 @@ export const ExamSetupContainer: React.FC = () => {
           </div>
         )}
 
-        {scope === 'topic' && subCategoryId && (
+        {/* Topic - Only if subcategory selected AND topics exist */}
+        {scope === 'topic' && subCategoryId && availableTopics.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
             <select value={topicId} onChange={e => setTopicId(e.target.value)} className="input-field">
@@ -206,7 +191,7 @@ export const ExamSetupContainer: React.FC = () => {
               key={mins}
               onClick={() => setTimeLimit(mins)}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
-                timeLimit === mins ? 'border-exam-DEFAULT bg-exam-light' : 'border-gray-200 hover:border-gray-300'
+                timeLimit === mins ? 'border-exam-DEFAULT bg-exam-light font-bold' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <p className="text-lg font-bold">{mins}</p>
@@ -232,12 +217,17 @@ export const ExamSetupContainer: React.FC = () => {
         </div>
       </div>
 
+      {/* START EXAM BUTTON - Now always visible */}
       <button
         onClick={handleStart}
-        disabled={scope === 'category' && !categoryId || scope === 'subCategory' && !subCategoryId || scope === 'topic' && !topicId}
-        className="w-full bg-exam-DEFAULT hover:bg-exam-dark text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all disabled:opacity-50"
+        disabled={!canStart}
+        className={`w-full text-white px-6 py-4 rounded-lg font-bold text-lg transition-all ${
+          canStart
+            ? 'bg-exam-DEFAULT hover:bg-exam-dark shadow-lg hover:shadow-xl active:scale-95'
+            : 'bg-gray-300 cursor-not-allowed'
+        }`}
       >
-        Start Exam
+        {canStart ? '🚀 Start Exam' : 'Select options above to start'}
       </button>
     </div>
   );
