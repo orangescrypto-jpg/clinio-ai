@@ -57,13 +57,15 @@ export const AppLayout: React.FC = () => {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="md:ml-64 flex-1 flex flex-col">
-          <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-8">
+        {/* Main Content Area */}
+        <div className="md:ml-64 flex flex-col flex-1 min-h-screen">
+          <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-8">
             <Outlet />
-          </div>
+          </main>
+          
+          {/* Footer - Always visible */}
           <Footer />
-        </main>
+        </div>
       </div>
 
       {/* Mobile Bottom Nav */}
