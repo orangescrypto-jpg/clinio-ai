@@ -28,7 +28,6 @@ export const router = createBrowserRouter([
       { path: 'exam', element: <ExamSetupContainer /> },
       { path: 'exam/session', element: <ExamSessionContainer /> },
       { path: 'exam/results', element: <ExamResultsContainer /> },
-      // Legal & Info Pages
       { path: 'about', element: <AboutPage /> },
       { path: 'contact', element: <ContactPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
