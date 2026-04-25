@@ -5,9 +5,11 @@ interface ExamState {
   session: ExamSession | null;
   config: ExamConfig | null;
   currentQuestion: ExamQuestion | null;
+  currentIndex: number;
   timeRemaining: number;
   isSubmitted: boolean;
   isComplete: boolean;
+  timerInterval: ReturnType<typeof setInterval> | null;
 
   startExam: (questions: ExamQuestion[], config: ExamConfig) => void;
   answerQuestion: (choiceId: string) => void;
@@ -23,9 +25,11 @@ export const useExamStore = create<ExamState>((set, get) => ({
   session: null,
   config: null,
   currentQuestion: null,
+  currentIndex: 0,
   timeRemaining: 0,
   isSubmitted: false,
   isComplete: false,
+  timerInterval: null,
 
   startExam: (questions, config) => {
     const answers: ExamAnswer[] = questions.map(q => ({
@@ -49,30 +53,32 @@ export const useExamStore = create<ExamState>((set, get) => ({
       session,
       config,
       currentQuestion: questions[0],
+      currentIndex: 0,
       timeRemaining: config.timeLimitMinutes * 60,
       isSubmitted: false,
       isComplete: false,
     });
 
-    // Start timer
     const timer = setInterval(() => {
-      const { timeRemaining, submitExam } = get();
-      if (timeRemaining <= 1) {
+      const state = get();
+      if (state.timeRemaining <= 1) {
         clearInterval(timer);
-        submitExam();
+        state.submitExam();
       } else {
-        set({ timeRemaining: timeRemaining - 1 });
+        set({ timeRemaining: state.timeRemaining - 1 });
       }
     }, 1000);
+
+    set({ timerInterval: timer });
   },
 
   answerQuestion: (choiceId) => {
-    const { session } = get();
+    const { session, currentIndex } = get();
     if (!session) return;
 
     const answers = [...session.answers];
-    answers[session.currentIndex] = {
-      ...answers[session.currentIndex],
+    answers[currentIndex] = {
+      ...answers[currentIndex],
       selectedChoiceId: choiceId,
     };
 
@@ -80,37 +86,39 @@ export const useExamStore = create<ExamState>((set, get) => ({
   },
 
   toggleFlag: () => {
-    const { session } = get();
+    const { session, currentIndex } = get();
     if (!session) return;
 
     const answers = [...session.answers];
-    answers[session.currentIndex] = {
-      ...answers[session.currentIndex],
-      isFlagged: !answers[session.currentIndex].isFlagged,
+    answers[currentIndex] = {
+      ...answers[currentIndex],
+      isFlagged: !answers[currentIndex].isFlagged,
     };
 
     set({ session: { ...session, answers } });
   },
 
   nextQuestion: () => {
-    const { session } = get();
+    const { session, currentIndex } = get();
     if (!session) return;
-    const next = session.currentIndex + 1;
+    const next = currentIndex + 1;
     if (next < session.questions.length) {
       set({
         currentQuestion: session.questions[next],
+        currentIndex: next,
         session: { ...session, currentIndex: next },
       });
     }
   },
 
   previousQuestion: () => {
-    const { session } = get();
+    const { session, currentIndex } = get();
     if (!session) return;
-    const prev = session.currentIndex - 1;
+    const prev = currentIndex - 1;
     if (prev >= 0) {
       set({
         currentQuestion: session.questions[prev],
+        currentIndex: prev,
         session: { ...session, currentIndex: prev },
       });
     }
@@ -121,22 +129,29 @@ export const useExamStore = create<ExamState>((set, get) => ({
     if (!session || index < 0 || index >= session.questions.length) return;
     set({
       currentQuestion: session.questions[index],
+      currentIndex: index,
       session: { ...session, currentIndex: index },
     });
   },
 
   submitExam: () => {
-    set({ isSubmitted: true, isComplete: true });
+    const { timerInterval } = get();
+    if (timerInterval) clearInterval(timerInterval);
+    set({ isSubmitted: true, isComplete: true, timerInterval: null });
   },
 
   resetExam: () => {
+    const { timerInterval } = get();
+    if (timerInterval) clearInterval(timerInterval);
     set({
       session: null,
       config: null,
       currentQuestion: null,
+      currentIndex: 0,
       timeRemaining: 0,
       isSubmitted: false,
       isComplete: false,
+      timerInterval: null,
     });
   },
 }));
