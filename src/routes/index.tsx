@@ -3,10 +3,16 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { HomePage } from '../features/home/HomePage';
 import { RapidQuizContainer } from '../features/rapid-quiz/RapidQuizContainer';
 import { ScenarioContainer } from '../features/clinical-scenario/ScenarioContainer';
+import { ScenarioPlayerContainer } from '../features/clinical-scenario/ScenarioPlayerContainer';
 import { FeedContainer } from '../features/content-feed/FeedContainer';
+import { PostDetailContainer } from '../features/content-feed/PostDetailContainer';
 import { ExamSetupContainer } from '../features/exam-mode/ExamSetupContainer';
 import { ExamSessionContainer } from '../features/exam-mode/ExamSessionContainer';
 import { ExamResultsContainer } from '../features/exam-mode/ExamResultsContainer';
+import { AboutPage } from '../features/pages/AboutPage';
+import { ContactPage } from '../features/pages/ContactPage';
+import { PrivacyPage } from '../features/pages/PrivacyPage';
+import { TermsPage } from '../features/pages/TermsPage';
 
 export const router = createBrowserRouter([
   {
@@ -16,10 +22,17 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'rapid-quiz', element: <RapidQuizContainer /> },
       { path: 'scenarios', element: <ScenarioContainer /> },
+      { path: 'scenarios/:scenarioId', element: <ScenarioPlayerContainer /> },
       { path: 'feed', element: <FeedContainer /> },
+      { path: 'feed/:postId', element: <PostDetailContainer /> },
       { path: 'exam', element: <ExamSetupContainer /> },
       { path: 'exam/session', element: <ExamSessionContainer /> },
       { path: 'exam/results', element: <ExamResultsContainer /> },
+      // Legal & Info Pages
+      { path: 'about', element: <AboutPage /> },
+      { path: 'contact', element: <ContactPage /> },
+      { path: 'privacy', element: <PrivacyPage /> },
+      { path: 'terms', element: <TermsPage /> },
     ],
   },
 ]);
