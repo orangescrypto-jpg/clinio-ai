@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   return (
     <footer className="bg-white border-t border-gray-200 mt-auto">
@@ -49,7 +49,7 @@ export const Footer: React.FC = () => {
         {/* Copyright */}
         <div className="border-t border-gray-200 mt-8 pt-6 text-center">
           <p className="text-sm text-gray-400">
-            © {currentYear} Clinio AI. All rights reserved.
+            © 2026 Clinio AI. All rights reserved.
           </p>
         </div>
       </div>
