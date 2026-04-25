@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 const features = [
   { title: 'Rapid Quiz', icon: '⚡', description: 'Timed questions with instant feedback and explanations', link: '/rapid-quiz', color: 'bg-orange-50 border-orange-200 hover:border-orange-300', iconBg: 'bg-orange-100' },
   { title: 'Clinical OSCE', icon: '🏥', description: 'Step-by-step patient case simulations with clinical reasoning', link: '/scenarios', color: 'bg-green-50 border-green-200 hover:border-green-300', iconBg: 'bg-green-100' },
-  { title: 'Clinico Room', icon: '📚', description: 'Educational content, videos, and discussions', link: '/feed', color: 'bg-blue-50 border-blue-200 hover:border-blue-300', iconBg: 'bg-blue-100' },
+  { title: 'Clinio Room', icon: '📚', description: 'Educational content, videos, and discussions', link: '/feed', color: 'bg-blue-50 border-blue-200 hover:border-blue-300', iconBg: 'bg-blue-100' },
   { title: 'Exam Mode', icon: '📝', description: 'Full exam simulation with results and performance breakdown', link: '/exam', color: 'bg-red-50 border-red-200 hover:border-red-300', iconBg: 'bg-red-100' },
 ];
 
@@ -29,7 +29,7 @@ export const HomePage: React.FC = () => {
           Welcome to <span className="text-primary-600">Clinio AI</span>
         </h1>
         <p className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto">
-          clinical reasoning
+          Smarter learning for healthcare professionals
         </p>
       </div>
 
