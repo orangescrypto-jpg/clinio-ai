@@ -9,15 +9,9 @@ const features = [
 ];
 
 const latestPosts = [
-  { id: '1', title: 'Understanding Heart Failure Management', topic: 'Cardiovascular', readTime: '5 min read', date: '2 days ago' },
-  { id: '2', title: 'NCLEX Pharmacology Tips: Must-Know Drug Classes', topic: 'Pharmacology', readTime: '7 min read', date: '3 days ago' },
-  { id: '3', title: 'Clinical Assessment: Respiratory System Guide', topic: 'Respiratory', readTime: '6 min read', date: '5 days ago' },
-];
-
-const categories = [
-  { icon: '🏥', label: 'Clinical Medicine', color: 'hover:border-blue-300' },
-  { icon: '🩺', label: 'NCLEX', color: 'hover:border-purple-300' },
-  { icon: '🇳🇬', label: 'NMCN', color: 'hover:border-green-300' },
+  { id: '1', title: 'Understanding Heart Failure Management', preview: 'Heart failure is a chronic condition affecting the heart\'s pumping ability. Learn about pathophysiology, assessment, and nursing interventions.', topic: 'Cardiovascular', category: 'Clinical Medicine', readTime: '5 min read', date: '2 days ago', hasVideo: false },
+  { id: '2', title: 'NCLEX Pharmacology: Must-Know Drug Classes', preview: 'Master the most commonly tested drug classes for NCLEX. Covers mechanisms of action, side effects, and nursing considerations.', topic: 'Pharmacology', category: 'NCLEX', readTime: '7 min read', date: '3 days ago', hasVideo: true },
+  { id: '3', title: 'Clinical Assessment: Respiratory System', preview: 'A systematic approach to respiratory examination including inspection, palpation, percussion, and auscultation techniques.', topic: 'Respiratory', category: 'Clinical Medicine', readTime: '6 min read', date: '5 days ago', hasVideo: false },
 ];
 
 export const HomePage: React.FC = () => {
@@ -35,11 +29,12 @@ export const HomePage: React.FC = () => {
 
       {/* Categories */}
       <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
-        {categories.map(cat => (
-          <div
-            key={cat.label}
-            className={`text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:shadow-md transition-all cursor-pointer ${cat.color}`}
-          >
+        {[
+          { icon: '🏥', label: 'Clinical Medicine' },
+          { icon: '🩺', label: 'NCLEX' },
+          { icon: '🇳🇬', label: 'NMCN' },
+        ].map(cat => (
+          <div key={cat.label} className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:shadow-md transition-all cursor-pointer hover:border-primary-300">
             <span className="text-2xl">{cat.icon}</span>
             <p className="text-sm font-medium text-gray-700 mt-1">{cat.label}</p>
           </div>
@@ -51,14 +46,8 @@ export const HomePage: React.FC = () => {
         <h2 className="text-xl font-bold text-gray-900 text-center mb-6">Choose Your Study Mode</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
           {features.map(feature => (
-            <Link
-              key={feature.title}
-              to={feature.link}
-              className={`p-6 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${feature.color}`}
-            >
-              <div className={`w-12 h-12 ${feature.iconBg} rounded-lg flex items-center justify-center text-2xl mb-3`}>
-                {feature.icon}
-              </div>
+            <Link key={feature.title} to={feature.link} className={`p-6 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${feature.color}`}>
+              <div className={`w-12 h-12 ${feature.iconBg} rounded-lg flex items-center justify-center text-2xl mb-3`}>{feature.icon}</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-1">{feature.title}</h3>
               <p className="text-sm text-gray-600">{feature.description}</p>
             </Link>
@@ -66,25 +55,21 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Latest Posts Preview */}
+      {/* Latest Posts */}
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">📚 Latest from Clinio Room</h2>
-          <Link to="/feed" className="text-sm text-primary-600 font-medium hover:underline">
-            View all →
-          </Link>
+          <Link to="/feed" className="text-sm text-primary-600 font-medium hover:underline">View all →</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {latestPosts.map(post => (
-            <Link
-              key={post.id}
-              to={`/feed/${post.id}`}
-              className="card p-5 hover:shadow-md transition-all hover:-translate-y-0.5"
-            >
-              <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
-                {post.topic}
-              </span>
-              <h3 className="text-sm font-semibold text-gray-900 mt-3 mb-2 line-clamp-2">{post.title}</h3>
+            <Link key={post.id} to={`/feed/${post.id}`} className="card p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{post.topic}</span>
+                {post.hasVideo && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">🎬 Video</span>}
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h3>
+              <p className="text-xs text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>{post.readTime}</span>
                 <span>{post.date}</span>
@@ -96,9 +81,7 @@ export const HomePage: React.FC = () => {
 
       {/* CTA */}
       <div className="text-center pb-4">
-        <Link to="/rapid-quiz" className="btn-primary inline-block text-lg px-8 py-3 shadow-lg hover:shadow-xl">
-          Start Practice Now
-        </Link>
+        <Link to="/rapid-quiz" className="btn-primary inline-block text-lg px-8 py-3 shadow-lg hover:shadow-xl">Start Practice Now</Link>
         <p className="text-sm text-gray-400 mt-2">No login required</p>
       </div>
     </div>
