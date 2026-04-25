@@ -43,6 +43,30 @@ const MOCK_QUESTIONS = [
     ],
     difficulty: 'medium' as const,
   },
+  {
+    id: 'q4',
+    topicId: 'topic-nursing-process',
+    stem: 'Evaluation in the nursing process involves:',
+    choices: [
+      { id: 'a', text: 'Collecting initial data' },
+      { id: 'b', text: 'Determining if goals were met' },
+      { id: 'c', text: 'Writing nursing orders' },
+      { id: 'd', text: 'Performing interventions' },
+    ],
+    difficulty: 'easy' as const,
+  },
+  {
+    id: 'q5',
+    topicId: 'topic-nursing-process',
+    stem: 'A nursing diagnosis is made during which step?',
+    choices: [
+      { id: 'a', text: 'Assessment' },
+      { id: 'b', text: 'Diagnosis' },
+      { id: 'c', text: 'Planning' },
+      { id: 'd', text: 'Implementation' },
+    ],
+    difficulty: 'easy' as const,
+  },
 ];
 
 export const ExamSetupContainer: React.FC = () => {
@@ -98,14 +122,14 @@ export const ExamSetupContainer: React.FC = () => {
   };
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div>
+    <div className="max-w-lg mx-auto pb-24">
+      <div className="mb-4">
         <h2 className="text-2xl font-bold text-gray-900">Exam Mode</h2>
         <p className="text-gray-600 mt-1">Full exam simulation with timed conditions</p>
       </div>
 
       {/* Scope Selection */}
-      <div className="card space-y-4">
+      <div className="card space-y-4 mb-4">
         <label className="block text-sm font-medium text-gray-700">Exam Scope</label>
         <div className="grid grid-cols-2 gap-2">
           {[
@@ -134,7 +158,6 @@ export const ExamSetupContainer: React.FC = () => {
           ))}
         </div>
 
-        {/* Category */}
         {(scope === 'category' || scope === 'subCategory' || scope === 'topic') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -151,7 +174,6 @@ export const ExamSetupContainer: React.FC = () => {
           </div>
         )}
 
-        {/* SubCategory - Only if category selected */}
         {(scope === 'subCategory' || scope === 'topic') && categoryId && availableSubCategories.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">System</label>
@@ -168,7 +190,6 @@ export const ExamSetupContainer: React.FC = () => {
           </div>
         )}
 
-        {/* Topic - Only if subcategory selected AND topics exist */}
         {scope === 'topic' && subCategoryId && availableTopics.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
@@ -183,7 +204,7 @@ export const ExamSetupContainer: React.FC = () => {
       </div>
 
       {/* Time Limit */}
-      <div className="card space-y-3">
+      <div className="card space-y-3 mb-4">
         <label className="block text-sm font-medium text-gray-700">Time Limit</label>
         <div className="grid grid-cols-4 gap-2">
           {[30, 45, 60, 90].map(mins => (
@@ -202,7 +223,7 @@ export const ExamSetupContainer: React.FC = () => {
       </div>
 
       {/* Summary */}
-      <div className="card space-y-3">
+      <div className="card space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-sm text-gray-600">Questions</span>
           <span className="font-semibold">{questionCount}</span>
@@ -217,17 +238,17 @@ export const ExamSetupContainer: React.FC = () => {
         </div>
       </div>
 
-      {/* START EXAM BUTTON - Now always visible */}
+      {/* START EXAM BUTTON - BIG & VISIBLE */}
       <button
         onClick={handleStart}
         disabled={!canStart}
-        className={`w-full text-white px-6 py-4 rounded-lg font-bold text-lg transition-all ${
+        className={`w-full text-white px-6 py-4 rounded-xl font-bold text-lg transition-all sticky bottom-20 md:bottom-4 ${
           canStart
-            ? 'bg-exam-DEFAULT hover:bg-exam-dark shadow-lg hover:shadow-xl active:scale-95'
+            ? 'bg-red-500 hover:bg-red-600 shadow-lg hover:shadow-xl active:scale-95'
             : 'bg-gray-300 cursor-not-allowed'
         }`}
       >
-        {canStart ? '🚀 Start Exam' : 'Select options above to start'}
+        {canStart ? '🚀 Start Exam' : '👆 Select options above to start'}
       </button>
     </div>
   );
