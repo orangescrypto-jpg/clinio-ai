@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QuizConfig, QuizQuestion, Question } from '../../../types';
-import { categories, subCategories, topics, getSubCategories, getTopics } from '../../../data/categories';
+import { categories, getSubCategories, getTopics } from '../../../data/categories';
 import { sessionManager } from '../../../utils/sessionManager';
 import { questionSelector } from '../../../utils/questionSelector';
 
@@ -11,72 +11,44 @@ interface Props {
 const MOCK_QUESTIONS: Question[] = [
   {
     id: 'q1',
-    topicId: 'heart-failure',
-    stem: 'A 65-year-old patient with heart failure presents with dyspnea and bilateral crackles. Which medication should the nurse administer first?',
+    topicId: 'topic-vital-signs',
+    stem: 'What is the normal resting blood pressure for a healthy adult?',
     choices: [
-      { id: 'a', text: 'Furosemide (Lasix) 40mg IV' },
-      { id: 'b', text: 'Digoxin 0.25mg PO' },
-      { id: 'c', text: 'Metoprolol 50mg PO' },
-      { id: 'd', text: 'Aspirin 325mg PO' },
+      { id: 'a', text: '120/80 mmHg' },
+      { id: 'b', text: '140/90 mmHg' },
+      { id: 'c', text: '100/60 mmHg' },
+      { id: 'd', text: '160/100 mmHg' },
     ],
     correctAnswerId: 'a',
-    explanation: 'Furosemide is a loop diuretic that provides rapid relief of pulmonary congestion in acute heart failure by reducing fluid volume.',
-    difficulty: 'medium',
+    explanation: 'Normal blood pressure is 120/80 mmHg. Values above 140/90 indicate hypertension.',
+    difficulty: 'easy',
   },
   {
     id: 'q2',
-    topicId: 'heart-failure',
-    stem: 'Which finding indicates that digoxin therapy is effective?',
+    topicId: 'topic-vital-signs',
+    stem: 'Which vital sign is most sensitive to infection?',
     choices: [
-      { id: 'a', text: 'Increased heart rate' },
-      { id: 'b', text: 'Decreased edema' },
-      { id: 'c', text: 'Improved appetite' },
-      { id: 'd', text: 'Clear breath sounds' },
+      { id: 'a', text: 'Blood pressure' },
+      { id: 'b', text: 'Temperature' },
+      { id: 'c', text: 'Respiratory rate' },
+      { id: 'd', text: 'Oxygen saturation' },
     ],
     correctAnswerId: 'b',
-    explanation: 'Digoxin improves cardiac output, which increases renal perfusion and reduces edema. Decreased edema is a sign of effective therapy.',
-    difficulty: 'medium',
+    explanation: 'Temperature elevation (fever) is often the first sign of infection.',
+    difficulty: 'easy',
   },
   {
     id: 'q3',
-    topicId: 'hypertension',
-    stem: 'A patient with hypertension is prescribed lisinopril. What side effect should the nurse monitor for?',
+    topicId: 'topic-heart-failure',
+    stem: 'A patient with heart failure has bilateral crackles. Which medication should be given first?',
     choices: [
-      { id: 'a', text: 'Hypokalemia' },
-      { id: 'b', text: 'Dry cough' },
-      { id: 'c', text: 'Tachycardia' },
-      { id: 'd', text: 'Weight gain' },
+      { id: 'a', text: 'Furosemide IV' },
+      { id: 'b', text: 'Digoxin PO' },
+      { id: 'c', text: 'Metoprolol PO' },
+      { id: 'd', text: 'Aspirin PO' },
     ],
-    correctAnswerId: 'b',
-    explanation: 'ACE inhibitors like lisinopril can cause a persistent dry cough due to bradykinin accumulation. This is a common side effect.',
-    difficulty: 'easy',
-  },
-  {
-    id: 'q4',
-    topicId: 'mi-acs',
-    stem: 'A patient with chest pain has elevated troponin levels. What does this indicate?',
-    choices: [
-      { id: 'a', text: 'Pulmonary embolism' },
-      { id: 'b', text: 'Myocardial infarction' },
-      { id: 'c', text: 'Pericarditis' },
-      { id: 'd', text: 'Aortic dissection' },
-    ],
-    correctAnswerId: 'b',
-    explanation: 'Elevated troponin is a specific marker for myocardial injury and indicates myocardial infarction.',
-    difficulty: 'easy',
-  },
-  {
-    id: 'q5',
-    topicId: 'arrhythmias',
-    stem: 'Which ECG finding is characteristic of atrial fibrillation?',
-    choices: [
-      { id: 'a', text: 'Regular narrow QRS complexes' },
-      { id: 'b', text: 'Absent P waves with irregular rhythm' },
-      { id: 'c', text: 'Widened QRS complexes' },
-      { id: 'd', text: 'ST segment elevation' },
-    ],
-    correctAnswerId: 'b',
-    explanation: 'Atrial fibrillation shows absent P waves and an irregularly irregular ventricular rhythm on ECG.',
+    correctAnswerId: 'a',
+    explanation: 'Furosemide provides rapid relief of pulmonary congestion in acute heart failure.',
     difficulty: 'medium',
   },
 ];
@@ -101,7 +73,6 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
     const session = sessionManager.getSession();
     const scopeKey = sessionManager.buildScopeKey(scope, config.scopeId);
 
-    // Use mock questions for now
     const { selected } = questionSelector.selectQuestions(
       MOCK_QUESTIONS,
       session,
@@ -116,6 +87,13 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
 
     onStart(quizQuestions, config);
   };
+
+  // Check if we can start
+  const canStart = 
+    scope === 'mixed' ||
+    (scope === 'category' && categoryId) ||
+    (scope === 'subCategory' && categoryId && subCategoryId) ||
+    (scope === 'topic' && categoryId && subCategoryId && topicId);
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -154,10 +132,12 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
           ))}
         </div>
 
-        {/* Category Select */}
+        {/* Step 1: Category Selection */}
         {(scope === 'category' || scope === 'subCategory' || scope === 'topic') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category
+            </label>
             <select
               value={categoryId}
               onChange={e => {
@@ -175,10 +155,12 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
           </div>
         )}
 
-        {/* SubCategory Select */}
-        {(scope === 'subCategory' || scope === 'topic') && categoryId && (
+        {/* Step 2: SubCategory Selection - Only shows if category selected */}
+        {(scope === 'subCategory' || scope === 'topic') && categoryId && availableSubCategories.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">System</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Subcategory
+            </label>
             <select
               value={subCategoryId}
               onChange={e => {
@@ -187,7 +169,7 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
               }}
               className="input-field"
             >
-              <option value="">Select system...</option>
+              <option value="">Select subcategory...</option>
               {availableSubCategories.map(sub => (
                 <option key={sub.id} value={sub.id}>{sub.name}</option>
               ))}
@@ -195,10 +177,12 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
           </div>
         )}
 
-        {/* Topic Select */}
-        {scope === 'topic' && subCategoryId && (
+        {/* Step 3: Topic Selection - Only shows if subcategory selected AND topics exist */}
+        {scope === 'topic' && subCategoryId && availableTopics.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Topic
+            </label>
             <select
               value={topicId}
               onChange={e => setTopicId(e.target.value)}
@@ -213,9 +197,14 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
             </select>
           </div>
         )}
+
+        {/* If no topics exist for selected subcategory, don't show empty state */}
+        {scope === 'topic' && subCategoryId && availableTopics.length === 0 && (
+          <p className="text-sm text-gray-400 italic">No topics available for this subcategory yet.</p>
+        )}
       </div>
 
-      {/* Question Count Info */}
+      {/* Question Count */}
       <div className="card">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Questions per session</span>
@@ -226,8 +215,8 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
       {/* Start Button */}
       <button
         onClick={handleStart}
-        disabled={scope === 'category' && !categoryId || scope === 'subCategory' && !subCategoryId || scope === 'topic' && !topicId}
-        className="btn-primary w-full text-lg"
+        disabled={!canStart}
+        className="btn-primary w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Start Quiz
       </button>
