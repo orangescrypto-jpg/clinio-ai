@@ -5,6 +5,7 @@ interface QuizState {
   session: QuizSession | null;
   config: QuizConfig | null;
   currentQuestion: QuizQuestion | null;
+  currentIndex: number;
   showFeedback: boolean;
   isComplete: boolean;
   score: { correct: number; total: number };
@@ -19,6 +20,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   session: null,
   config: null,
   currentQuestion: null,
+  currentIndex: 0,
   showFeedback: false,
   isComplete: false,
   score: { correct: 0, total: 0 },
@@ -37,6 +39,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
       session,
       config,
       currentQuestion: questions[0],
+      currentIndex: 0,
       showFeedback: false,
       isComplete: false,
       score: { correct: 0, total: 0 },
@@ -44,7 +47,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   },
 
   answerQuestion: (choiceId) => {
-    const { session, currentQuestion, score } = get();
+    const { session, currentQuestion, currentIndex, score } = get();
     if (!session || !currentQuestion) return;
 
     const isCorrect = choiceId === currentQuestion.question.correctAnswerId;
@@ -56,7 +59,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
     };
 
     const answers = [...session.answers];
-    answers[session.currentIndex] = answer;
+    answers[currentIndex] = answer;
 
     set({
       session: { ...session, answers },
@@ -69,15 +72,16 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   },
 
   nextQuestion: () => {
-    const { session } = get();
+    const { session, currentIndex } = get();
     if (!session) return;
 
-    const nextIndex = session.currentIndex + 1;
+    const nextIndex = currentIndex + 1;
     if (nextIndex >= session.questions.length) {
       set({ isComplete: true });
     } else {
       set({
         currentQuestion: session.questions[nextIndex],
+        currentIndex: nextIndex,
         showFeedback: false,
         session: { ...session, currentIndex: nextIndex },
       });
@@ -89,6 +93,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
       session: null,
       config: null,
       currentQuestion: null,
+      currentIndex: 0,
       showFeedback: false,
       isComplete: false,
       score: { correct: 0, total: 0 },
