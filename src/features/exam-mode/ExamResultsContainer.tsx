@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExamStore } from '../../stores/useExamStore';
-import { QuestionResult } from '../../types';
+
+interface QuestionResult {
+  questionId: string;
+  stem: string;
+  topicName: string;
+  userChoiceText: string;
+  correctChoiceText: string;
+  isCorrect: boolean;
+  explanation: string;
+}
 
 const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const ExamResultsContainer: React.FC = () => {
   const navigate = useNavigate();
   const { session, resetExam } = useExamStore();
-  const [questionResults, setQuestionResults] = useState<QuestionResult[]>([]);
+  const [results, setResults] = useState<QuestionResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState({ correct: 0, incorrect: 0, unanswered: 0, total: 0 });
   const [timeSpent, setTimeSpent] = useState(0);
 
   useEffect(() => {
     if (session) {
-      fetchAnswers();
       calculateTimeSpent();
+      fetchAnswers();
     } else {
       navigate('/exam');
     }
@@ -36,34 +45,38 @@ export const ExamResultsContainer: React.FC = () => {
     try {
       const response = await fetch(`${FIRESTORE_URL}/questions`);
       const data = await response.json();
-      
+
       let correct = 0;
       let incorrect = 0;
       let unanswered = 0;
-      const results: QuestionResult[] = [];
+      const allResults: QuestionResult[] = [];
 
       if (data.documents) {
-        const allQuestions = data.documents.map((doc: any) => {
+        const questionsMap = new Map<string, any>();
+        data.documents.forEach((doc: any) => {
           const f = doc.fields;
-          return {
+          const correctId = f.correctAnswerId?.stringValue || '';
+          const choices = f.choices?.arrayValue?.values || [];
+          const correctChoice = choices.find(
+            (v: any) => v.mapValue?.fields?.id?.stringValue === correctId
+          );
+
+          questionsMap.set(doc.name.split('/').pop(), {
             id: doc.name.split('/').pop(),
             stem: f.stem?.stringValue || '',
-            correctAnswerId: f.correctAnswerId?.stringValue || '',
-            correctChoiceText: f.choices?.arrayValue?.values?.find(
-              (v: any) => v.mapValue?.fields?.id?.stringValue === f.correctAnswerId?.stringValue
-            )?.mapValue?.fields?.text?.stringValue || 'N/A',
+            correctAnswerId: correctId,
+            correctChoiceText: correctChoice?.mapValue?.fields?.text?.stringValue || 'N/A',
             explanation: f.explanation?.stringValue || '',
-            topicName: f.topicId?.stringValue?.replace(/-/g, ' ') || 'General',
-          };
+            topicName: (f.topicId?.stringValue || 'general').replace(/-/g, ' '),
+          });
         });
 
-        // Match exam questions with Firebase answers
         session.questions.forEach((examQ) => {
-          const fullQ = allQuestions.find((q: any) => q.id === examQ.id);
+          const fullQ = questionsMap.get(examQ.id);
           const userAnswer = session.answers.find(a => a.questionId === examQ.id);
-          
+          const userChoiceId = userAnswer?.selectedChoiceId || null;
+
           if (fullQ) {
-            const userChoiceId = userAnswer?.selectedChoiceId || null;
             const selectedChoice = examQ.choices.find(c => c.id === userChoiceId);
             const isCorrect = userChoiceId === fullQ.correctAnswerId;
 
@@ -75,31 +88,21 @@ export const ExamResultsContainer: React.FC = () => {
               incorrect++;
             }
 
-            results.push({
+            allResults.push({
               questionId: examQ.id,
               stem: fullQ.stem,
               topicName: fullQ.topicName,
               userChoiceText: selectedChoice?.text || 'Not answered',
               correctChoiceText: fullQ.correctChoiceText,
-              isCorrect: userChoiceId ? isCorrect : false,
+              isCorrect: !!userChoiceId && isCorrect,
               explanation: fullQ.explanation,
-              userChoiceId: userChoiceId,
-              correctChoiceId: fullQ.correctAnswerId,
-              topic: fullQ.topicName,
-              category: '',
-              subCategory: '',
             });
           }
         });
       }
 
-      setQuestionResults(results);
-      setScore({
-        correct,
-        incorrect,
-        unanswered,
-        total: session.questions.length,
-      });
+      setResults(allResults);
+      setScore({ correct, incorrect, unanswered, total: session.questions.length });
     } catch (err) {
       console.error('Failed to load results:', err);
     } finally {
@@ -139,7 +142,7 @@ export const ExamResultsContainer: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 px-4">
+    <div className="max-w-2xl mx-auto space-y-6 px-4 pb-24">
       {/* Score Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-36 h-36 rounded-full border-4 border-primary-500 bg-primary-50 mb-4">
@@ -168,21 +171,21 @@ export const ExamResultsContainer: React.FC = () => {
         </div>
         <div className="card text-center p-4">
           <p className="text-2xl font-bold text-gray-900">{formatTime(timeSpent)}</p>
-          <p className="text-xs text-gray-500">Time Spent</p>
+          <p className="text-xs text-gray-500">Time</p>
         </div>
       </div>
 
-      {/* Unanswered Warning */}
+      {/* Unanswered */}
       {score.unanswered > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm text-center">
           ⚠️ You left {score.unanswered} question(s) unanswered.
         </div>
       )}
 
       {/* Answer Review */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-900">Answer Review</h3>
-        {questionResults.map((q, i) => (
+        <h3 className="text-lg font-bold text-gray-900">📋 Answer Review</h3>
+        {results.map((q, i) => (
           <div key={q.questionId} className={`card border-l-4 ${q.isCorrect ? 'border-l-green-500' : 'border-l-red-500'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-gray-400">Question {i + 1} · {q.topicName}</span>
@@ -214,7 +217,7 @@ export const ExamResultsContainer: React.FC = () => {
       </div>
 
       {/* Actions */}
-      <div className="space-y-3 pb-8">
+      <div className="space-y-3">
         <button onClick={handleBackToSetup} className="btn-primary w-full">
           Take Another Exam
         </button>
