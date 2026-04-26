@@ -60,7 +60,11 @@ export async function fetchTopics(subCategoryId?: string): Promise<any[]> {
           subCategoryId: f.subCategoryId?.stringValue || '',
           name: f.name?.stringValue || '',
           description: f.description?.stringValue || '',
-          questionCount: f.questionCount?.integerValue || 0,
+          questionCount:
+            f.questionCount?.integerValue ||
+            f.questionCount?.doubleValue ||
+            parseInt(f.questionCount?.stringValue || '0') ||
+            0,
         };
       });
       if (subCategoryId) {
