@@ -1,17 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+
+interface Post {
+  id: string;
+  title: string;
+  preview: string;
+  topic: string;
+  category: string;
+  readTime: string;
+  createdAt: string;
+  hasVideo: boolean;
+  imageUrl: string;
+}
 
 const features = [
   { title: 'Rapid Quiz', icon: '⚡', description: 'Timed questions with instant feedback and explanations', link: '/rapid-quiz', color: 'bg-orange-50 border-orange-200 hover:border-orange-300', iconBg: 'bg-orange-100' },
   { title: 'Clinical OSCE', icon: '🏥', description: 'Step-by-step patient case simulations with clinical reasoning', link: '/scenarios', color: 'bg-green-50 border-green-200 hover:border-green-300', iconBg: 'bg-green-100' },
   { title: 'Clinio Room', icon: '📚', description: 'Educational content, videos, and discussions', link: '/feed', color: 'bg-blue-50 border-blue-200 hover:border-blue-300', iconBg: 'bg-blue-100' },
   { title: 'Exam Mode', icon: '📝', description: 'Full exam simulation with results and performance breakdown', link: '/exam', color: 'bg-red-50 border-red-200 hover:border-red-300', iconBg: 'bg-red-100' },
-];
-
-const latestPosts = [
-  { id: '1', title: 'Understanding Heart Failure Management', preview: 'Heart failure is a chronic condition affecting the heart\'s pumping ability. Learn about pathophysiology, assessment, and nursing interventions.', topic: 'Cardiovascular', category: 'Clinical Medicine', readTime: '5 min read', date: '2 days ago', hasVideo: false },
-  { id: '2', title: 'NCLEX Pharmacology: Must-Know Drug Classes', preview: 'Master the most commonly tested drug classes for NCLEX. Covers mechanisms of action, side effects, and nursing considerations.', topic: 'Pharmacology', category: 'NCLEX', readTime: '7 min read', date: '3 days ago', hasVideo: true },
-  { id: '3', title: 'Clinical Assessment: Respiratory System', preview: 'A systematic approach to respiratory examination including inspection, palpation, percussion, and auscultation techniques.', topic: 'Respiratory', category: 'Clinical Medicine', readTime: '6 min read', date: '5 days ago', hasVideo: false },
 ];
 
 const categories = [
@@ -21,6 +27,56 @@ const categories = [
 ];
 
 export const HomePage: React.FC = () => {
+  const [latestPosts, setLatestPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLatestPosts();
+  }, []);
+
+  const fetchLatestPosts = async () => {
+    try {
+      const response = await fetch(
+        'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents/posts?orderBy=createdAt%20desc&pageSize=3'
+      );
+      const data = await response.json();
+
+      if (data.documents) {
+        const posts = data.documents.map((doc: any) => {
+          const f = doc.fields;
+          return {
+            id: doc.name.split('/').pop(),
+            title: f.title?.stringValue || '',
+            preview: f.preview?.stringValue || '',
+            topic: f.topic?.stringValue || '',
+            category: f.category?.stringValue || '',
+            readTime: f.readTime?.stringValue || '',
+            createdAt: f.createdAt?.stringValue || '',
+            hasVideo: f.hasVideo?.booleanValue || false,
+            imageUrl: f.imageUrl?.stringValue || '',
+          };
+        });
+        setLatestPosts(posts);
+      }
+    } catch (err) {
+      console.error('Failed to load posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format date to relative time
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return `${diff} days ago`;
+    return dateStr;
+  };
+
   return (
     <div className="space-y-10">
       {/* Hero */}
@@ -63,22 +119,42 @@ export const HomePage: React.FC = () => {
           <h2 className="text-xl font-bold text-gray-900">📚 Latest from Clinio Room</h2>
           <Link to="/feed" className="text-sm text-primary-600 font-medium hover:underline">View all →</Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {latestPosts.map(post => (
-            <Link key={post.id} to={`/feed/${post.id}`} className="card p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{post.topic}</span>
-                {post.hasVideo && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">🎬 Video</span>}
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="card p-5 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h3>
-              <p className="text-xs text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{post.readTime}</span>
-                <span>{post.date}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : latestPosts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {latestPosts.map(post => (
+              <Link key={post.id} to={`/feed/${post.id}`} className="card p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{post.topic}</span>
+                  {post.hasVideo && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">🎬 Video</span>}
+                </div>
+                {post.imageUrl && (
+                  <img src={post.imageUrl} alt={post.title} className="w-full h-32 object-cover rounded-lg mb-2" />
+                )}
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h3>
+                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{post.readTime}</span>
+                  <span>{formatDate(post.createdAt)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400">No posts yet. Check back soon!</p>
+          </div>
+        )}
       </div>
 
       {/* CTA */}
