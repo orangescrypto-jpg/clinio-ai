@@ -8,94 +8,155 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
-    .container { max-width: 800px; margin: 0 auto; }
-    h1 { color: #2563eb; margin-bottom: 20px; }
-    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #374151; }
-    input, textarea, select { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 14px; }
-    textarea { resize: vertical; min-height: 200px; font-family: monospace; }
-    button { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; }
-    button:hover { background: #1d4ed8; }
-    button.delete { background: #ef4444; margin-left: 8px; }
-    button.delete:hover { background: #dc2626; }
-    button.edit { background: #f59e0b; margin-left: 8px; }
-    .post-item { padding: 14px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-    .msg { padding: 12px; border-radius: 8px; margin-bottom: 14px; }
-    .msg.success { background: #d1fae5; color: #065f46; }
-    .msg.error { background: #fee2e2; color: #991b1b; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { color: #2563eb; margin-bottom: 8px; font-size: 28px; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    h2 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #374151; }
+    input, textarea, select { width: 100%; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 14px; font-family: inherit; transition: border-color 0.2s; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    textarea { resize: vertical; min-height: 80px; }
+    textarea#content { min-height: 200px; font-family: 'Courier New', monospace; font-size: 13px; }
+    button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+    button.primary { background: #2563eb; color: white; }
+    button.primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+    button.secondary { background: #6b7280; color: white; }
+    button.secondary:hover { background: #4b5563; }
+    button.danger { background: #ef4444; color: white; }
+    button.danger:hover { background: #dc2626; }
+    button.warning { background: #f59e0b; color: white; }
+    button.warning:hover { background: #d97706; }
+    button.small { padding: 6px 12px; font-size: 12px; }
+    .msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; font-weight: 500; }
+    .msg.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    img.preview { max-height: 150px; border-radius: 8px; margin-top: 8px; }
-    a { color: #2563eb; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    img.preview { max-height: 200px; border-radius: 8px; margin-top: 8px; border: 1px solid #e5e7eb; }
+    a { color: #2563eb; text-decoration: underline; }
+    .post-item { padding: 16px; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+    .post-item:hover { border-color: #2563eb; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .post-info { flex: 1; }
+    .post-info strong { display: block; margin-bottom: 4px; }
+    .post-info small { color: #6b7280; }
+    .post-actions { display: flex; gap: 6px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+    .badge.blue { background: #dbeafe; color: #1e40af; }
+    .badge.green { background: #d1fae5; color: #065f46; }
+    .badge.purple { background: #ede9fe; color: #5b21b6; }
+    .badge.orange { background: #fff7ed; color: #9a3412; }
+    .section-divider { border-top: 1px solid #e5e7eb; margin: 16px 0; padding-top: 16px; }
+    .help-text { font-size: 11px; color: #9ca3af; margin-top: -10px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🛠️ Clinio AI Admin</h1>
+    <p class="subtitle">Create, edit, and manage educational posts. Posts appear instantly on the website.</p>
     <div id="msg"></div>
     
+    <!-- Form Card -->
     <div class="card">
-      <h2 id="formTitle">📝 New Post</h2>
+      <h2 id="formTitle">📝 Create New Post</h2>
       <form id="postForm">
         <input type="hidden" id="postId">
+        <input type="hidden" id="originalCreatedAt">
         
-        <label>Title *</label>
-        <input type="text" id="title" required>
+        <label>📌 Title *</label>
+        <input type="text" id="title" placeholder="e.g., Understanding Heart Failure Management" required>
         
-        <label>Preview (short summary) *</label>
-        <textarea id="preview" rows="2" required></textarea>
+        <label>📝 Preview (short summary shown on cards) *</label>
+        <textarea id="preview" rows="2" placeholder="A brief summary that entices readers to click..." required></textarea>
         
-        <label>Content (HTML supported) *</label>
-        <textarea id="content" rows="10" required></textarea>
+        <label>📄 Full Content (HTML supported) *</label>
+        <textarea id="content" rows="10" placeholder="<h2>Introduction</h2><p>Write your full article here...</p>" required></textarea>
         
-        <label>Image URL <small>(<a href="https://imgbb.com" target="_blank">Upload to imgbb.com</a>, paste link)</small></label>
-        <input type="url" id="imageUrl" placeholder="https://i.ibb.co/example.jpg">
+        <label>🖼️ Image URL <small>(<a href="https://imgbb.com" target="_blank">Upload to imgbb.com</a>, paste direct link)</small></label>
+        <input type="url" id="imageUrl" placeholder="https://i.ibb.co/your-image.jpg">
         <img id="imagePreview" class="preview" style="display:none;">
         
-        <div class="grid">
+        <div class="section-divider"></div>
+        
+        <div class="grid-3">
           <div>
-            <label>Category</label>
+            <label>📂 Category</label>
             <select id="category">
-              <option>Clinical Medicine</option>
-              <option>NCLEX</option>
-              <option>NMCN</option>
+              <option value="Clinical Medicine">Clinical Medicine</option>
+              <option value="NCLEX">NCLEX</option>
+              <option value="NMCN">NMCN</option>
             </select>
           </div>
           <div>
-            <label>Topic</label>
-            <input type="text" id="topic" value="Cardiovascular">
+            <label>🏷️ Topic</label>
+            <input type="text" id="topic" value="Cardiovascular" placeholder="e.g., Cardiovascular">
+          </div>
+          <div>
+            <label>🔬 SubCategory</label>
+            <input type="text" id="subCategory" value="Cardiology" placeholder="e.g., Cardiology">
           </div>
         </div>
         
         <div class="grid">
           <div>
-            <label>SubCategory</label>
-            <input type="text" id="subCategory" value="Cardiology">
+            <label>⏱️ Read Time</label>
+            <input type="text" id="readTime" value="5 min read" placeholder="e.g., 5 min read">
           </div>
           <div>
-            <label>Read Time</label>
-            <input type="text" id="readTime" value="5 min read">
+            <label>📝 Related Quiz Topic <small>(links "Try Related Quiz" button)</small></label>
+            <select id="relatedQuiz">
+              <option value="">-- None --</option>
+              <option value="Cardiovascular">Cardiovascular</option>
+              <option value="Respiratory">Respiratory</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Endocrine">Endocrine</option>
+              <option value="Gastrointestinal">Gastrointestinal</option>
+              <option value="Renal/Urinary">Renal/Urinary</option>
+              <option value="Hematology">Hematology</option>
+              <option value="Infectious Diseases">Infectious Diseases</option>
+              <option value="Musculoskeletal">Musculoskeletal</option>
+              <option value="Fundamentals of Nursing">Fundamentals of Nursing</option>
+              <option value="Medical-Surgical Nursing">Medical-Surgical Nursing</option>
+              <option value="Maternal & Newborn">Maternal & Newborn</option>
+              <option value="Pediatric Nursing">Pediatric Nursing</option>
+              <option value="Mental Health Nursing">Mental Health Nursing</option>
+              <option value="Pharmacology">Pharmacology</option>
+              <option value="Leadership & Management">Leadership & Management</option>
+              <option value="Safety & Infection Control">Safety & Infection Control</option>
+              <option value="Community Health">Community Health</option>
+              <option value="Midwifery">Midwifery</option>
+              <option value="Nursing Ethics & Law">Nursing Ethics & Law</option>
+              <option value="Public Health Nursing">Public Health Nursing</option>
+            </select>
           </div>
         </div>
         
-        <label>
-          <input type="checkbox" id="hasVideo"> Has Video
-        </label>
-        <input type="url" id="videoUrl" placeholder="YouTube embed URL" style="display:none;">
+        <div class="section-divider"></div>
         
-        <button type="submit" id="submitBtn">🚀 Publish Post</button>
-        <button type="button" id="cancelBtn" style="background:#6b7280; display:none;">Cancel</button>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="hasVideo" style="width: auto; margin: 0;">
+          <span>🎬 Has YouTube Video</span>
+        </label>
+        <input type="url" id="videoUrl" placeholder="https://www.youtube.com/embed/VIDEO_ID" style="display:none;">
+        
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button type="submit" id="submitBtn" class="primary" style="flex: 1;">🚀 Publish Post</button>
+          <button type="button" id="cancelBtn" class="secondary" style="display:none;">Cancel</button>
+        </div>
       </form>
     </div>
 
+    <!-- Posts List -->
     <div class="card">
       <h2>📋 All Posts (<span id="postCount">0</span>)</h2>
-      <div id="postsList"></div>
+      <div id="postsList">
+        <p style="color: #9ca3af; text-align: center; padding: 20px;">Loading posts...</p>
+      </div>
     </div>
   </div>
 
   <script>
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyCN6PHO9vXgj2UcdUpQ76fPPigkfwmKhEg",
       authDomain: "clinio-ai.firebaseapp.com",
@@ -107,118 +168,168 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
     let editingId = null;
 
     function showMsg(text, type) {
       const msg = document.getElementById('msg');
       msg.innerHTML = `<div class="msg ${type}">${text}</div>`;
-      setTimeout(() => msg.innerHTML = '', 3000);
+      setTimeout(() => msg.innerHTML = '', 4000);
     }
 
     async function loadPosts() {
-      const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
-      const posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      document.getElementById('postCount').textContent = posts.length;
-      
-      document.getElementById('postsList').innerHTML = posts.map(p => `
-        <div class="post-item">
-          <div>
-            <strong>${p.title}</strong><br>
-            <small>${p.category} · ${p.topic} · ${p.readTime}</small>
+      try {
+        const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
+        const posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById('postCount').textContent = posts.length;
+        
+        if (posts.length === 0) {
+          document.getElementById('postsList').innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">No posts yet. Create your first post above!</p>';
+          return;
+        }
+
+        document.getElementById('postsList').innerHTML = posts.map(p => `
+          <div class="post-item">
+            <div class="post-info">
+              <strong>${p.title || 'Untitled'}</strong>
+              <small>
+                <span class="badge blue">${p.category || 'N/A'}</span>
+                <span class="badge green">${p.topic || 'N/A'}</span>
+                ${p.relatedQuiz ? `<span class="badge orange">Quiz: ${p.relatedQuiz}</span>` : ''}
+                ${p.hasVideo ? '<span class="badge purple">🎬 Video</span>' : ''}
+                · ${p.readTime || 'N/A'} · ${p.createdAt || 'N/A'}
+              </small>
+            </div>
+            <div class="post-actions">
+              <button onclick="editPost('${p.id}')" class="warning small">✏️ Edit</button>
+              <button onclick="deletePost('${p.id}')" class="danger small">🗑️ Delete</button>
+            </div>
           </div>
-          <div>
-            <button onclick='editPost("${p.id}")'>✏️</button>
-            <button class="delete" onclick='deletePost("${p.id}")'>🗑️</button>
-          </div>
-        </div>
-      `).join('');
+        `).join('');
+      } catch (err) {
+        document.getElementById('postsList').innerHTML = `<p style="color:#ef4444;text-align:center;padding:20px;">Error loading posts: ${err.message}</p>`;
+      }
     }
 
     async function savePost(e) {
       e.preventDefault();
+      
       const data = {
-        title: document.getElementById('title').value,
-        preview: document.getElementById('preview').value,
-        content: document.getElementById('content').value,
-        imageUrl: document.getElementById('imageUrl').value,
-        topic: document.getElementById('topic').value,
+        title: document.getElementById('title').value.trim(),
+        preview: document.getElementById('preview').value.trim(),
+        content: document.getElementById('content').value.trim(),
+        imageUrl: document.getElementById('imageUrl').value.trim(),
+        topic: document.getElementById('topic').value.trim(),
         category: document.getElementById('category').value,
-        subCategory: document.getElementById('subCategory').value,
+        subCategory: document.getElementById('subCategory').value.trim(),
+        relatedQuiz: document.getElementById('relatedQuiz').value,
         author: 'Clinio AI',
-        readTime: document.getElementById('readTime').value,
+        readTime: document.getElementById('readTime').value.trim(),
         hasVideo: document.getElementById('hasVideo').checked,
-        videoUrl: document.getElementById('videoUrl').value,
-        likes: 0,
-        comments: 0,
-        createdAt: new Date().toISOString().split('T')[0],
+        videoUrl: document.getElementById('hasVideo').checked ? document.getElementById('videoUrl').value.trim() : '',
+        likes: editingId ? (document.getElementById('postId').dataset.likes || 0) : 0,
+        comments: editingId ? (document.getElementById('postId').dataset.comments || 0) : 0,
+        createdAt: editingId ? document.getElementById('originalCreatedAt').value : new Date().toISOString().split('T')[0],
         updatedAt: new Date().toISOString().split('T')[0],
       };
 
       try {
         if (editingId) {
           await db.collection('posts').doc(editingId).update(data);
-          showMsg('✅ Post updated!', 'success');
+          showMsg('✅ Post updated successfully!', 'success');
         } else {
           await db.collection('posts').add(data);
-          showMsg('✅ Post published!', 'success');
+          showMsg('✅ Post published successfully!', 'success');
         }
         resetForm();
         loadPosts();
+        window.scrollTo({ top: document.getElementById('postsList').offsetTop, behavior: 'smooth' });
       } catch (err) {
         showMsg('❌ Error: ' + err.message, 'error');
       }
     }
 
     window.editPost = async (id) => {
-      const doc = await db.collection('posts').doc(id).get();
-      const data = doc.data();
-      editingId = id;
-      document.getElementById('formTitle').textContent = '✏️ Edit Post';
-      document.getElementById('postId').value = id;
-      document.getElementById('title').value = data.title;
-      document.getElementById('preview').value = data.preview;
-      document.getElementById('content').value = data.content;
-      document.getElementById('imageUrl').value = data.imageUrl || '';
-      document.getElementById('topic').value = data.topic;
-      document.getElementById('category').value = data.category;
-      document.getElementById('subCategory').value = data.subCategory;
-      document.getElementById('readTime').value = data.readTime;
-      document.getElementById('hasVideo').checked = data.hasVideo;
-      document.getElementById('videoUrl').value = data.videoUrl || '';
-      document.getElementById('submitBtn').textContent = '💾 Update Post';
-      document.getElementById('cancelBtn').style.display = 'inline-block';
-      if (data.imageUrl) {
-        document.getElementById('imagePreview').src = data.imageUrl;
-        document.getElementById('imagePreview').style.display = 'block';
+      try {
+        const doc = await db.collection('posts').doc(id).get();
+        if (!doc.exists) {
+          showMsg('Post not found!', 'error');
+          return;
+        }
+        const data = doc.data();
+        editingId = id;
+        
+        document.getElementById('formTitle').textContent = '✏️ Edit Post';
+        document.getElementById('postId').value = id;
+        document.getElementById('postId').dataset.likes = data.likes || 0;
+        document.getElementById('postId').dataset.comments = data.comments || 0;
+        document.getElementById('originalCreatedAt').value = data.createdAt || '';
+        document.getElementById('title').value = data.title || '';
+        document.getElementById('preview').value = data.preview || '';
+        document.getElementById('content').value = data.content || '';
+        document.getElementById('imageUrl').value = data.imageUrl || '';
+        document.getElementById('topic').value = data.topic || '';
+        document.getElementById('category').value = data.category || 'Clinical Medicine';
+        document.getElementById('subCategory').value = data.subCategory || '';
+        document.getElementById('relatedQuiz').value = data.relatedQuiz || '';
+        document.getElementById('readTime').value = data.readTime || '5 min read';
+        document.getElementById('hasVideo').checked = data.hasVideo || false;
+        document.getElementById('videoUrl').value = data.videoUrl || '';
+        document.getElementById('videoUrl').style.display = data.hasVideo ? 'block' : 'none';
+        document.getElementById('submitBtn').textContent = '💾 Update Post';
+        document.getElementById('cancelBtn').style.display = 'inline-block';
+        
+        if (data.imageUrl) {
+          document.getElementById('imagePreview').src = data.imageUrl;
+          document.getElementById('imagePreview').style.display = 'block';
+        } else {
+          document.getElementById('imagePreview').style.display = 'none';
+        }
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showMsg('❌ Error loading post: ' + err.message, 'error');
       }
     };
 
     window.deletePost = async (id) => {
-      if (confirm('Delete this post?')) {
-        await db.collection('posts').doc(id).delete();
-        showMsg('🗑️ Post deleted', 'success');
-        loadPosts();
+      if (confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+        try {
+          await db.collection('posts').doc(id).delete();
+          showMsg('🗑️ Post deleted successfully!', 'success');
+          loadPosts();
+        } catch (err) {
+          showMsg('❌ Error: ' + err.message, 'error');
+        }
       }
     };
 
     function resetForm() {
       editingId = null;
-      document.getElementById('formTitle').textContent = '📝 New Post';
+      document.getElementById('formTitle').textContent = '📝 Create New Post';
       document.getElementById('postForm').reset();
+      document.getElementById('postId').value = '';
+      document.getElementById('originalCreatedAt').value = '';
+      document.getElementById('topic').value = 'Cardiovascular';
+      document.getElementById('category').value = 'Clinical Medicine';
+      document.getElementById('subCategory').value = 'Cardiology';
+      document.getElementById('readTime').value = '5 min read';
       document.getElementById('submitBtn').textContent = '🚀 Publish Post';
       document.getElementById('cancelBtn').style.display = 'none';
       document.getElementById('imagePreview').style.display = 'none';
+      document.getElementById('videoUrl').style.display = 'none';
+      document.getElementById('hasVideo').checked = false;
     }
 
     document.getElementById('postForm').addEventListener('submit', savePost);
     document.getElementById('cancelBtn').addEventListener('click', resetForm);
+    
     document.getElementById('hasVideo').addEventListener('change', function() {
       document.getElementById('videoUrl').style.display = this.checked ? 'block' : 'none';
     });
+    
     document.getElementById('imageUrl').addEventListener('input', function() {
       const preview = document.getElementById('imagePreview');
-      if (this.value) {
+      if (this.value.trim()) {
         preview.src = this.value;
         preview.style.display = 'block';
       } else {
