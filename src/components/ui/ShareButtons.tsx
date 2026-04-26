@@ -11,6 +11,16 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
   const encodedTitle = encodeURIComponent(title);
   const encodedSummary = encodeURIComponent(summary || title);
 
+  const handleCopy = () => {
+    if (typeof navigator !== 'undefined') {
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Link copied to clipboard!');
+      }).catch(() => {
+        alert('Failed to copy link');
+      });
+    }
+  };
+
   const shareLinks = [
     {
       name: 'Twitter',
@@ -59,32 +69,36 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
       ),
-      url: '#',
       color: 'hover:bg-gray-600 hover:text-white',
-      onClick: (e: React.MouseEvent) => {
-        e.preventDefault();
-        navigator.clipboard.writeText(url).then(() => {
-          alert('Link copied to clipboard!');
-        });
-      },
+      onClick: handleCopy,
     },
   ];
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-500 mr-1">Share:</span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm text-gray-500 font-medium">Share:</span>
       {shareLinks.map((link) => (
-        <a
-          key={link.name}
-          href={link.url}
-          target={link.url !== '#' ? '_blank' : undefined}
-          rel={link.url !== '#' ? 'noopener noreferrer' : undefined}
-          onClick={link.onClick}
-          title={`Share on ${link.name}`}
-          className={`p-2 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
-        >
-          {link.icon}
-        </a>
+        link.onClick ? (
+          <button
+            key={link.name}
+            onClick={link.onClick}
+            title={`Share via ${link.name}`}
+            className={`p-2 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
+          >
+            {link.icon}
+          </button>
+        ) : (
+          <a
+            key={link.name}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Share on ${link.name}`}
+            className={`p-2 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
+          >
+            {link.icon}
+          </a>
+        )
       ))}
     </div>
   );
