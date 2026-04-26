@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinio AI - Add Post</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: #f3f4f6; padding: 20px; }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h1 { color: #2563eb; margin-bottom: 5px; }
+        .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin: 15px 0 5px; font-size: 14px; color: #374151; }
+        input, textarea, select { width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; }
+        textarea { min-height: 100px; resize: vertical; }
+        button { width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 25px; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+        .success { background: #dcfce7; color: #166534; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; display: none; font-weight: 500; }
+        .info { background: #dbeafe; color: #1e40af; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; }
+        .checkbox-group input[type="checkbox"] { width: auto; }
+        .checkbox-group label { margin: 0; }
+        .field-hint { font-size: 12px; color: #9ca3af; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Add New Post</h1>
+        <p class="subtitle">Publish educational content to Clinio Room</p>
+        
+        <div class="info">
+            💡 <strong>Tip:</strong> Fill all fields and click Publish. Post appears instantly on your site!
+        </div>
+
+        <form id="postForm">
+            <label>📌 Title *</label>
+            <input type="text" id="title" required placeholder="e.g. Understanding Heart Failure Management">
+            
+            <label>📄 Preview (shown on homepage) *</label>
+            <textarea id="preview" required placeholder="Short 1-2 sentence summary..."></textarea>
+            
+            <label>📝 Full Content *</label>
+            <textarea id="content" required placeholder="Write your full article here..." style="min-height:250px"></textarea>
+            
+            <label>🖼️ Image URL (optional)</label>
+            <input type="url" id="imageUrl" placeholder="https://example.com/image.jpg">
+            <p class="field-hint">Paste a direct image link. Upload images to imgur.com or similar first.</p>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="hasVideo">
+                <label>🎬 This post has a YouTube video</label>
+            </div>
+            
+            <div id="videoSection" style="display:none;">
+                <label>📺 YouTube Embed URL</label>
+                <input type="url" id="videoUrl" placeholder="https://www.youtube.com/embed/VIDEO_ID">
+                <p class="field-hint">Use the embed URL format: youtube.com/embed/...</p>
+            </div>
+            
+            <label>📂 Category *</label>
+            <select id="category" required>
+                <option value="">Select category...</option>
+                <option value="Clinical Medicine">🏥 Clinical Medicine</option>
+                <option value="NCLEX">🩺 NCLEX</option>
+                <option value="NMCN">🇳🇬 NMCN</option>
+            </select>
+            
+            <label>🏷️ Topic</label>
+            <input type="text" id="topic" placeholder="e.g. Cardiovascular, Pharmacology, Nursing Fundamentals">
+            
+            <button type="submit" id="submitBtn">📢 Publish Post</button>
+        </form>
+        
+        <div class="success" id="success">✅ Post Published Successfully! Redirecting...</div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCN6PHO9vXgj2UcdUpQ76fPPigkfwmKhEg",
+            authDomain: "clinio-ai.firebaseapp.com",
+            projectId: "clinio-ai",
+            storageBucket: "clinio-ai.firebasestorage.app",
+            messagingSenderId: "1092363872596",
+            appId: "1:1092363872596:web:4dcb10a7bc89e54a78c0c1"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Show/hide video field
+        document.getElementById('hasVideo').addEventListener('change', function() {
+            document.getElementById('videoSection').style.display = this.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('postForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Publishing...';
+
+            const hasVideo = document.getElementById('hasVideo').checked;
+            
+            const post = {
+                title: document.getElementById('title').value,
+                preview: document.getElementById('preview').value,
+                content: document.getElementById('content').value,
+                imageUrl: document.getElementById('imageUrl').value || '',
+                category: document.getElementById('category').value,
+                topic: document.getElementById('topic').value || 'General',
+                author: 'Clinio AI',
+                readTime: Math.ceil(document.getElementById('content').value.split(' ').length / 200) + ' min read',
+                hasVideo: hasVideo,
+                videoUrl: hasVideo ? document.getElementById('videoUrl').value : '',
+                likes: 0,
+                comments: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                await db.collection('posts').add(post);
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('postForm').reset();
+                
+                setTimeout(() => {
+                    window.location.href = '/feed';
+                }, 2000);
+            } catch (error) {
+                alert('Error: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = '📢 Publish Post';
+            }
+        });
+    </script>
+</body>
+</html>
