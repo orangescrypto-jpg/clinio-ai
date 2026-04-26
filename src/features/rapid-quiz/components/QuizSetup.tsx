@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizConfig, QuizQuestion, Question } from '../../../types';
-import { categories, getSubCategories, getTopics } from '../../../data/categories';
+import { fetchCategories, fetchSubCategories, fetchTopics } from '../../../data/categories';
 import { sessionManager } from '../../../utils/sessionManager';
 import { questionSelector } from '../../../utils/questionSelector';
 
@@ -37,20 +37,6 @@ const MOCK_QUESTIONS: Question[] = [
     explanation: 'Temperature elevation (fever) is often the first sign of infection.',
     difficulty: 'easy',
   },
-  {
-    id: 'q3',
-    topicId: 'topic-heart-failure',
-    stem: 'A patient with heart failure has bilateral crackles. Which medication should be given first?',
-    choices: [
-      { id: 'a', text: 'Furosemide IV' },
-      { id: 'b', text: 'Digoxin PO' },
-      { id: 'c', text: 'Metoprolol PO' },
-      { id: 'd', text: 'Aspirin PO' },
-    ],
-    correctAnswerId: 'a',
-    explanation: 'Furosemide provides rapid relief of pulmonary congestion in acute heart failure.',
-    difficulty: 'medium',
-  },
 ];
 
 export const QuizSetup: React.FC<Props> = ({ onStart }) => {
@@ -60,8 +46,46 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
   const [scope, setScope] = useState<'mixed' | 'category' | 'subCategory' | 'topic'>('mixed');
   const [questionCount] = useState(50);
 
-  const availableSubCategories = categoryId ? getSubCategories(categoryId) : [];
-  const availableTopics = subCategoryId ? getTopics(subCategoryId) : [];
+  const [categories, setCategories] = useState<any[]>([]);
+  const [subCategories, setSubCategories] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    if (categoryId && (scope === 'subCategory' || scope === 'topic')) {
+      loadSubCategories(categoryId);
+    } else {
+      setSubCategories([]);
+    }
+  }, [categoryId, scope]);
+
+  useEffect(() => {
+    if (subCategoryId && scope === 'topic') {
+      loadTopics(subCategoryId);
+    } else {
+      setTopics([]);
+    }
+  }, [subCategoryId, scope]);
+
+  const loadCategories = async () => {
+    const data = await fetchCategories();
+    setCategories(data);
+    setLoading(false);
+  };
+
+  const loadSubCategories = async (catId: string) => {
+    const data = await fetchSubCategories(catId);
+    setSubCategories(data);
+  };
+
+  const loadTopics = async (subId: string) => {
+    const data = await fetchTopics(subId);
+    setTopics(data);
+  };
 
   const handleStart = () => {
     const config: QuizConfig = {
@@ -88,12 +112,20 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
     onStart(quizQuestions, config);
   };
 
-  // Check if we can start
-  const canStart = 
+  const canStart =
     scope === 'mixed' ||
     (scope === 'category' && categoryId) ||
     (scope === 'subCategory' && categoryId && subCategoryId) ||
     (scope === 'topic' && categoryId && subCategoryId && topicId);
+
+  if (loading) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-600 border-t-transparent mx-auto"></div>
+        <p className="text-gray-500 mt-4">Loading categories...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -102,7 +134,6 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
         <p className="text-gray-600 mt-1">Choose your practice mode</p>
       </div>
 
-      {/* Scope Selection */}
       <div className="card space-y-4">
         <label className="block text-sm font-medium text-gray-700">Practice Mode</label>
         <div className="grid grid-cols-2 gap-2">
@@ -121,9 +152,7 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
                 setTopicId('');
               }}
               className={`p-3 rounded-lg border-2 text-left transition-all ${
-                scope === opt.value
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                scope === opt.value ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <span className="text-lg">{opt.icon}</span>
@@ -132,79 +161,51 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
           ))}
         </div>
 
-        {/* Step 1: Category Selection */}
         {(scope === 'category' || scope === 'subCategory' || scope === 'topic') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
             <select
               value={categoryId}
-              onChange={e => {
-                setCategoryId(e.target.value);
-                setSubCategoryId('');
-                setTopicId('');
-              }}
+              onChange={e => { setCategoryId(e.target.value); setSubCategoryId(''); setTopicId(''); }}
               className="input-field"
             >
               <option value="">Select category...</option>
-              {categories.map(cat => (
+              {categories.map((cat: any) => (
                 <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Step 2: SubCategory Selection - Only shows if category selected */}
-        {(scope === 'subCategory' || scope === 'topic') && categoryId && availableSubCategories.length > 0 && (
+        {(scope === 'subCategory' || scope === 'topic') && categoryId && subCategories.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subcategory
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">System</label>
             <select
               value={subCategoryId}
-              onChange={e => {
-                setSubCategoryId(e.target.value);
-                setTopicId('');
-              }}
+              onChange={e => { setSubCategoryId(e.target.value); setTopicId(''); }}
               className="input-field"
             >
-              <option value="">Select subcategory...</option>
-              {availableSubCategories.map(sub => (
+              <option value="">Select system...</option>
+              {subCategories.map((sub: any) => (
                 <option key={sub.id} value={sub.id}>{sub.name}</option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Step 3: Topic Selection - Only shows if subcategory selected AND topics exist */}
-        {scope === 'topic' && subCategoryId && availableTopics.length > 0 && (
+        {scope === 'topic' && subCategoryId && topics.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Topic
-            </label>
-            <select
-              value={topicId}
-              onChange={e => setTopicId(e.target.value)}
-              className="input-field"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
+            <select value={topicId} onChange={e => setTopicId(e.target.value)} className="input-field">
               <option value="">Select topic...</option>
-              {availableTopics.map(topic => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.name} ({topic.questionCount} questions)
-                </option>
+              {topics.map((topic: any) => (
+                <option key={topic.id} value={topic.id}>{topic.name} ({topic.questionCount} questions)</option>
               ))}
             </select>
           </div>
         )}
-
-        {/* If no topics exist for selected subcategory, don't show empty state */}
-        {scope === 'topic' && subCategoryId && availableTopics.length === 0 && (
-          <p className="text-sm text-gray-400 italic">No topics available for this subcategory yet.</p>
-        )}
       </div>
 
-      {/* Question Count */}
       <div className="card">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Questions per session</span>
@@ -212,12 +213,7 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
         </div>
       </div>
 
-      {/* Start Button */}
-      <button
-        onClick={handleStart}
-        disabled={!canStart}
-        className="btn-primary w-full text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-      >
+      <button onClick={handleStart} disabled={!canStart} className="btn-primary w-full text-lg disabled:opacity-50">
         Start Quiz
       </button>
     </div>
