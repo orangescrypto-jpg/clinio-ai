@@ -8,36 +8,7 @@ interface Props {
   onStart: (questions: QuizQuestion[], config: QuizConfig) => void;
 }
 
-const MOCK_QUESTIONS: Question[] = [
-  {
-    id: 'q1',
-    topicId: 'topic-vital-signs',
-    stem: 'What is the normal resting blood pressure for a healthy adult?',
-    choices: [
-      { id: 'a', text: '120/80 mmHg' },
-      { id: 'b', text: '140/90 mmHg' },
-      { id: 'c', text: '100/60 mmHg' },
-      { id: 'd', text: '160/100 mmHg' },
-    ],
-    correctAnswerId: 'a',
-    explanation: 'Normal blood pressure is 120/80 mmHg. Values above 140/90 indicate hypertension.',
-    difficulty: 'easy',
-  },
-  {
-    id: 'q2',
-    topicId: 'topic-vital-signs',
-    stem: 'Which vital sign is most sensitive to infection?',
-    choices: [
-      { id: 'a', text: 'Blood pressure' },
-      { id: 'b', text: 'Temperature' },
-      { id: 'c', text: 'Respiratory rate' },
-      { id: 'd', text: 'Oxygen saturation' },
-    ],
-    correctAnswerId: 'b',
-    explanation: 'Temperature elevation (fever) is often the first sign of infection.',
-    difficulty: 'easy',
-  },
-];
+const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const QuizSetup: React.FC<Props> = ({ onStart }) => {
   const [categoryId, setCategoryId] = useState<string>('');
@@ -50,25 +21,20 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
   const [subCategories, setSubCategories] = useState<any[]>([]);
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  useEffect(() => { loadCategories(); }, []);
 
   useEffect(() => {
     if (categoryId && (scope === 'subCategory' || scope === 'topic')) {
       loadSubCategories(categoryId);
-    } else {
-      setSubCategories([]);
-    }
+    } else { setSubCategories([]); }
   }, [categoryId, scope]);
 
   useEffect(() => {
     if (subCategoryId && scope === 'topic') {
       loadTopics(subCategoryId);
-    } else {
-      setTopics([]);
-    }
+    } else { setTopics([]); }
   }, [subCategoryId, scope]);
 
   const loadCategories = async () => {
@@ -87,21 +53,69 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
     setTopics(data);
   };
 
-  const handleStart = () => {
+  const fetchQuestionsFromFirebase = async (tId: string): Promise<Question[]> => {
+    try {
+      const response = await fetch(`${FIRESTORE_URL}/questions`);
+      const data = await response.json();
+      if (data.documents) {
+        return data.documents
+          .filter((doc: any) => {
+            const f = doc.fields;
+            return f.topicId?.stringValue === tId;
+          })
+          .map((doc: any) => {
+            const f = doc.fields;
+            return {
+              id: doc.name.split('/').pop(),
+              topicId: f.topicId?.stringValue || '',
+              stem: f.stem?.stringValue || '',
+              choices: f.choices?.arrayValue?.values?.map((v: any) => ({
+                id: v.mapValue?.fields?.id?.stringValue || '',
+                text: v.mapValue?.fields?.text?.stringValue || '',
+              })) || [],
+              correctAnswerId: f.correctAnswerId?.stringValue || '',
+              explanation: f.explanation?.stringValue || '',
+              difficulty: f.difficulty?.stringValue || 'medium',
+            };
+          });
+      }
+    } catch (err) {
+      console.error('Failed to fetch questions:', err);
+    }
+    return [];
+  };
+
+  const handleStart = async () => {
+    setStarting(true);
+    
     const config: QuizConfig = {
       scope,
       scopeId: scope === 'topic' ? topicId : scope === 'subCategory' ? subCategoryId : scope === 'category' ? categoryId : undefined,
       questionCount,
     };
 
+    let allQuestions: Question[] = [];
+
+    // Fetch from Firebase if topic is selected
+    if (scope === 'topic' && topicId) {
+      allQuestions = await fetchQuestionsFromFirebase(topicId);
+    }
+
+    // If no questions found, show alert
+    if (allQuestions.length === 0) {
+      alert('No questions found for this topic. Please add questions in Firebase first.');
+      setStarting(false);
+      return;
+    }
+
     const session = sessionManager.getSession();
     const scopeKey = sessionManager.buildScopeKey(scope, config.scopeId);
 
     const { selected } = questionSelector.selectQuestions(
-      MOCK_QUESTIONS,
+      allQuestions,
       session,
       scopeKey,
-      Math.min(questionCount, MOCK_QUESTIONS.length)
+      Math.min(questionCount, allQuestions.length)
     );
 
     const quizQuestions: QuizQuestion[] = selected.map(q => ({
@@ -110,6 +124,7 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
     }));
 
     onStart(quizQuestions, config);
+    setStarting(false);
   };
 
   const canStart =
@@ -213,8 +228,8 @@ export const QuizSetup: React.FC<Props> = ({ onStart }) => {
         </div>
       </div>
 
-      <button onClick={handleStart} disabled={!canStart} className="btn-primary w-full text-lg disabled:opacity-50">
-        Start Quiz
+      <button onClick={handleStart} disabled={!canStart || starting} className="btn-primary w-full text-lg disabled:opacity-50">
+        {starting ? 'Loading questions...' : 'Start Quiz'}
       </button>
     </div>
   );
