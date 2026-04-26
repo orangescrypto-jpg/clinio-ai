@@ -70,6 +70,7 @@ export interface QuizSession {
   currentIndex: number;
   status: 'active' | 'completed';
   startedAt: string;
+  completedAt?: string;
 }
 
 // ============================================
@@ -106,6 +107,7 @@ export interface ExamSession {
   timeRemainingSeconds: number;
   status: 'in-progress' | 'submitted';
   startedAt: string;
+  submittedAt?: string;
 }
 
 export interface ExamResult {
