@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ShareButtons } from '../../components/ui/ShareButtons';
 
 interface Post {
   id: string;
@@ -51,16 +52,9 @@ export const PostDetailContainer: React.FC = () => {
   const fetchPost = async () => {
     try {
       const response = await fetch(`${FIRESTORE_URL}/posts/${postId}`);
-      
-      if (!response.ok) {
-        setPost(null);
-        setLoading(false);
-        return;
-      }
-
+      if (!response.ok) { setPost(null); setLoading(false); return; }
       const data = await response.json();
       const f = data.fields;
-      
       setPost({
         id: postId!,
         title: f.title?.stringValue || '',
@@ -79,74 +73,51 @@ export const PostDetailContainer: React.FC = () => {
         comments: f.comments?.integerValue || 0,
         createdAt: f.createdAt?.stringValue || '',
       });
-    } catch (err) {
-      console.error('Failed to load post:', err);
-      setPost(null);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Failed to load post:', err); setPost(null); }
+    finally { setLoading(false); }
   };
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`${FIRESTORE_URL}/comments?orderBy=timestamp%20desc`);
+      const response = await fetch(`${FIRESTORE_URL}/comments`);
       const data = await response.json();
       if (data.documents) {
-        const fetchedComments = data.documents
-          .map((doc: any) => {
-            const f = doc.fields;
-            return {
-              id: doc.name.split('/').pop(),
-              postId: f.postId?.stringValue || '',
-              name: f.name?.stringValue || '',
-              message: f.message?.stringValue || '',
-              timestamp: f.timestamp?.stringValue || '',
-            };
-          })
-          .filter((c: Comment) => c.postId === postId);
-        setComments(fetchedComments);
+        const allComments = data.documents.map((doc: any) => {
+          const f = doc.fields;
+          return {
+            id: doc.name.split('/').pop(),
+            postId: f.postId?.stringValue || '',
+            name: f.name?.stringValue || '',
+            message: f.message?.stringValue || '',
+            timestamp: f.timestamp?.stringValue || '',
+          };
+        });
+        setComments(allComments.filter((c: Comment) => c.postId === postId));
       }
-    } catch (err) {
-      console.error('Failed to load comments:', err);
-    } finally {
-      setLoadingComments(false);
-    }
+    } catch (err) { console.error('Failed to load comments:', err); }
+    finally { setLoadingComments(false); }
   };
 
-  const saveComment = async (comment: Omit<Comment, 'id'>) => {
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newMessage.trim()) return;
     try {
       await fetch(`${FIRESTORE_URL}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fields: {
-            postId: { stringValue: comment.postId },
-            name: { stringValue: comment.name },
-            message: { stringValue: comment.message },
-            timestamp: { stringValue: comment.timestamp },
+            postId: { stringValue: postId || '' },
+            name: { stringValue: newName.trim() },
+            message: { stringValue: newMessage.trim() },
+            timestamp: { stringValue: new Date().toISOString() },
           },
         }),
       });
-    } catch (err) {
-      console.error('Failed to save comment:', err);
-    }
-  };
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newMessage.trim()) return;
-
-    const newComment = {
-      postId: postId || '',
-      name: newName.trim(),
-      message: newMessage.trim(),
-      timestamp: new Date().toISOString(),
-    };
-
-    await saveComment(newComment);
-    setNewName('');
-    setNewMessage('');
-    fetchComments();
+      setNewName('');
+      setNewMessage('');
+      fetchComments();
+    } catch (err) { console.error('Failed to save comment:', err); }
   };
 
   if (loading) {
@@ -171,18 +142,13 @@ export const PostDetailContainer: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 px-0 sm:px-4">
-      {/* Back Button */}
-      <button 
-        onClick={() => navigate('/feed')} 
-        className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 py-2 -ml-1"
-      >
+      <button onClick={() => navigate('/feed')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 py-2 -ml-1">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to Clinio Room
       </button>
 
-      {/* Header */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-block text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>
@@ -191,23 +157,17 @@ export const PostDetailContainer: React.FC = () => {
         </div>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{post.title}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-400">
-          <span>{post.author}</span>
-          <span className="hidden sm:inline">·</span>
-          <span>{post.readTime}</span>
-          <span className="hidden sm:inline">·</span>
-          <span>{post.createdAt}</span>
+          <span>{post.author}</span><span className="hidden sm:inline">·</span><span>{post.readTime}</span><span className="hidden sm:inline">·</span><span>{post.createdAt}</span>
           {post.subCategory && (<><span className="hidden sm:inline">·</span><span>{post.subCategory}</span></>)}
         </div>
       </div>
 
-      {/* Image */}
       {post.imageUrl && (
         <div className="-mx-4 sm:mx-0">
           <img src={post.imageUrl} alt={post.title} className="w-full h-48 sm:h-64 md:h-80 object-cover sm:rounded-xl" loading="lazy" />
         </div>
       )}
 
-      {/* Video */}
       {post.hasVideo && post.videoUrl && (
         <div className="-mx-4 sm:mx-0">
           <div className="aspect-video bg-black sm:rounded-xl overflow-hidden">
@@ -216,34 +176,31 @@ export const PostDetailContainer: React.FC = () => {
         </div>
       )}
 
-      {/* Content */}
       <div className="bg-white sm:rounded-xl sm:border sm:border-gray-100 -mx-4 sm:mx-0 px-4 sm:px-6 py-5 sm:py-8">
         <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 prose-headings:text-gray-900 prose-headings:font-bold prose-h2:text-lg sm:prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3 prose-h3:text-base sm:prose-h3:text-lg prose-p:text-sm sm:prose-p:text-base prose-p:leading-relaxed prose-li:text-sm sm:prose-li:text-base prose-strong:text-gray-900 [&_h2]:border-b [&_h2]:border-gray-100 [&_h2]:pb-2"
-          dangerouslySetInnerHTML={{ __html: post.content }} 
-        />
+          dangerouslySetInnerHTML={{ __html: post.content }} />
       </div>
 
-      {/* Related Quiz */}
       {post.relatedQuiz && (
         <Link to={`/rapid-quiz?topic=${encodeURIComponent(post.relatedQuiz)}`} className="flex items-center justify-between p-4 sm:p-5 bg-primary-50 border-2 border-primary-200 rounded-xl hover:bg-primary-100 transition-colors -mx-4 sm:mx-0">
-          <div>
-            <p className="font-semibold text-primary-700 text-sm sm:text-base">📝 Try Related Quiz</p>
-            <p className="text-xs sm:text-sm text-primary-500 mt-0.5">Test your knowledge on {post.relatedQuiz}</p>
-          </div>
-          <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+          <div><p className="font-semibold text-primary-700 text-sm sm:text-base">📝 Try Related Quiz</p><p className="text-xs sm:text-sm text-primary-500 mt-0.5">Test your knowledge on {post.relatedQuiz}</p></div>
+          <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
         </Link>
       )}
 
+      {/* Share Buttons */}
+      <div className="py-3 -mx-4 sm:mx-0">
+        <ShareButtons 
+          title={post.title}
+          url={typeof window !== 'undefined' ? window.location.href : ''}
+          summary={post.preview}
+        />
+      </div>
+
       <div className="border-t border-gray-200 pt-2" />
 
-      {/* Comments */}
       <div className="space-y-4">
-        <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-          💬 Comments
-          <span className="text-sm font-normal text-gray-400">({comments.length})</span>
-        </h3>
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">💬 Comments <span className="text-sm font-normal text-gray-400">({comments.length})</span></h3>
 
         <form onSubmit={handleAddComment} className="space-y-3 bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
           <input type="text" placeholder="Your name" value={newName} onChange={e => setNewName(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" required />
