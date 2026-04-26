@@ -31,7 +31,6 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
       ),
       url: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
       color: 'hover:bg-gray-900 hover:text-white hover:border-gray-900',
-      label: 'Tweet',
     },
     {
       name: 'LinkedIn',
@@ -42,7 +41,6 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
       ),
       url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
       color: 'hover:bg-[#0A66C2] hover:text-white hover:border-[#0A66C2]',
-      label: 'Post',
     },
     {
       name: 'WhatsApp',
@@ -53,7 +51,6 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
       ),
       url: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`,
       color: 'hover:bg-[#25D366] hover:text-white hover:border-[#25D366]',
-      label: 'Share',
     },
     {
       name: 'Email',
@@ -64,7 +61,6 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
       ),
       url: `mailto:?subject=${encodedTitle}&body=${encodedSummary}%0A%0A${encodedUrl}`,
       color: 'hover:bg-gray-600 hover:text-white hover:border-gray-600',
-      label: 'Email',
     },
     {
       name: 'Copy Link',
@@ -74,25 +70,23 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
         </svg>
       ),
       color: 'hover:bg-gray-600 hover:text-white hover:border-gray-600',
-      label: 'Copy',
       onClick: handleCopy,
     },
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 py-2">
-      <span className="text-sm font-semibold text-gray-600">Share this post</span>
-      <div className="flex items-center gap-1.5">
+    <div className="text-center py-3">
+      <p className="text-sm font-semibold text-gray-500 mb-3">Share this post</p>
+      <div className="flex items-center justify-center gap-2 flex-wrap">
         {shareLinks.map((link) => (
           link.onClick ? (
             <button
               key={link.name}
               onClick={link.onClick}
-              title={`${link.label} link`}
-              className={`p-2.5 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 flex items-center gap-2 ${link.color}`}
+              title={`${link.name}`}
+              className={`p-2.5 rounded-full border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
             >
               {link.icon}
-              <span className="text-xs font-medium hidden sm:inline">{link.label}</span>
             </button>
           ) : (
             <a
@@ -101,10 +95,9 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
               target="_blank"
               rel="noopener noreferrer"
               title={`Share on ${link.name}`}
-              className={`p-2.5 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 flex items-center gap-2 ${link.color}`}
+              className={`p-2.5 rounded-full border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
             >
               {link.icon}
-              <span className="text-xs font-medium hidden sm:inline">{link.label}</span>
             </a>
           )
         ))}
