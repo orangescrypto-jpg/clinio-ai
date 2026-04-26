@@ -20,6 +20,7 @@ export const ExamSessionContainer: React.FC = () => {
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showNavigator, setShowNavigator] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   if (!session || !currentQuestion) {
     return (
@@ -37,9 +38,20 @@ export const ExamSessionContainer: React.FC = () => {
   };
 
   const answeredCount = session.answers.filter(a => a.selectedChoiceId !== null).length;
+  const unansweredCount = session.questions.length - answeredCount;
   const flaggedCount = session.answers.filter(a => a.isFlagged).length;
 
-  const handleSubmit = () => {
+  const handleSubmitClick = () => {
+    // Check if all questions are answered
+    if (unansweredCount > 0) {
+      setSubmitError(`You have ${unansweredCount} unanswered question(s). Please answer all questions before submitting.`);
+      return;
+    }
+    setSubmitError('');
+    setShowSubmitModal(true);
+  };
+
+  const handleConfirmSubmit = () => {
     setShowSubmitModal(false);
     submitExam();
     navigate('/exam/results');
@@ -48,38 +60,45 @@ export const ExamSessionContainer: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Header Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <span className="text-sm font-medium text-gray-600">
           {currentIndex + 1} / {session.questions.length}
         </span>
-        <span className={`text-lg font-bold ${timeRemaining < 300 ? 'text-red-500 animate-pulse-fast' : 'text-gray-700'}`}>
+        <span className={`text-lg font-bold ${timeRemaining < 300 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
           ⏱ {formatTime(timeRemaining)}
         </span>
         <button
-          onClick={() => setShowSubmitModal(true)}
-          className="text-sm font-medium text-exam-DEFAULT hover:text-exam-dark"
+          onClick={handleSubmitClick}
+          className="text-sm font-semibold bg-exam-DEFAULT text-white px-4 py-1.5 rounded-lg hover:bg-exam-dark transition-colors"
         >
-          Submit
+          Submit Exam
         </button>
       </div>
+
+      {/* Unanswered Warning */}
+      {submitError && (
+        <div className="mx-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          ⚠️ {submitError}
+        </div>
+      )}
 
       {/* Question */}
       <div className="card mx-4">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs text-gray-400">Question {currentIndex + 1}</span>
+          <span className="text-xs text-gray-400 font-medium">Question {currentIndex + 1} of {session.questions.length}</span>
           <button
             onClick={toggleFlag}
-            className={`text-sm px-3 py-1 rounded-full border ${
+            className={`text-sm px-3 py-1 rounded-full border transition-colors ${
               session.answers[currentIndex]?.isFlagged
-                ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
-                : 'border-gray-200 text-gray-400'
+                ? 'border-yellow-400 bg-yellow-50 text-yellow-700 font-medium'
+                : 'border-gray-200 text-gray-400 hover:border-yellow-300'
             }`}
           >
-            🚩 {session.answers[currentIndex]?.isFlagged ? 'Flagged' : 'Flag'}
+            🚩 {session.answers[currentIndex]?.isFlagged ? 'Flagged for Review' : 'Flag'}
           </button>
         </div>
 
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">{currentQuestion.stem}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 leading-relaxed">{currentQuestion.stem}</h3>
 
         <div className="space-y-2">
           {currentQuestion.choices.map(choice => {
@@ -90,11 +109,11 @@ export const ExamSessionContainer: React.FC = () => {
                 onClick={() => answerQuestion(choice.id)}
                 className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
                   isSelected
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary-500 bg-primary-50 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                <span className="font-medium">{choice.id.toUpperCase()}. </span>
+                <span className="font-semibold text-primary-600 mr-2">{choice.id.toUpperCase()}.</span>
                 {choice.text}
               </button>
             );
@@ -107,20 +126,20 @@ export const ExamSessionContainer: React.FC = () => {
         <button
           onClick={previousQuestion}
           disabled={currentIndex === 0}
-          className="btn-secondary text-sm"
+          className="btn-secondary text-sm disabled:opacity-30"
         >
           ← Previous
         </button>
         <button
           onClick={() => setShowNavigator(true)}
-          className="text-sm text-primary-600 font-medium"
+          className="text-sm text-primary-600 font-medium hover:text-primary-700 bg-primary-50 px-4 py-2 rounded-lg"
         >
-          📋 Navigator
+          📋 Question Map
         </button>
         <button
           onClick={nextQuestion}
           disabled={currentIndex === session.questions.length - 1}
-          className="btn-primary text-sm"
+          className="btn-primary text-sm disabled:opacity-30"
         >
           Next →
         </button>
@@ -128,43 +147,67 @@ export const ExamSessionContainer: React.FC = () => {
 
       {/* Stats Bar */}
       <div className="card mx-4">
-        <div className="flex justify-around text-center text-sm">
+        <div className="grid grid-cols-4 text-center text-sm">
           <div>
-            <p className="text-green-600 font-bold">{answeredCount}</p>
-            <p className="text-gray-500">Answered</p>
+            <p className="text-green-600 font-bold text-lg">{answeredCount}</p>
+            <p className="text-gray-500 text-xs">Answered</p>
           </div>
           <div>
-            <p className="text-gray-600 font-bold">{session.questions.length - answeredCount}</p>
-            <p className="text-gray-500">Unanswered</p>
+            <p className={`font-bold text-lg ${unansweredCount > 0 ? 'text-red-500' : 'text-gray-600'}`}>{unansweredCount}</p>
+            <p className="text-gray-500 text-xs">Unanswered</p>
           </div>
           <div>
-            <p className="text-yellow-600 font-bold">{flaggedCount}</p>
-            <p className="text-gray-500">Flagged</p>
+            <p className="text-yellow-600 font-bold text-lg">{flaggedCount}</p>
+            <p className="text-gray-500 text-xs">Flagged</p>
           </div>
+          <div>
+            <p className="text-gray-600 font-bold text-lg">{session.questions.length}</p>
+            <p className="text-gray-500 text-xs">Total</p>
+          </div>
+        </div>
+        {/* Progress Bar */}
+        <div className="mt-3 bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(answeredCount / session.questions.length) * 100}%` }}
+          />
         </div>
       </div>
 
       {/* Question Navigator Modal */}
       {showNavigator && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center">
-          <div className="bg-white rounded-t-xl md:rounded-xl w-full md:max-w-lg max-h-96 overflow-y-auto p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center" onClick={() => setShowNavigator(false)}>
+          <div className="bg-white rounded-t-xl md:rounded-xl w-full md:max-w-lg max-h-[70vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Question Navigator</h3>
-              <button onClick={() => setShowNavigator(false)} className="text-gray-400 text-xl">✕</button>
+              <h3 className="font-bold text-lg">📋 Question Map</h3>
+              <button onClick={() => setShowNavigator(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
             </div>
+            
+            <p className="text-sm text-gray-500 mb-4">Click any number to jump to that question</p>
+            
+            {/* Legend */}
+            <div className="flex items-center gap-4 mb-4 text-xs">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border border-green-500 inline-block"></span> Answered</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-white border border-gray-300 inline-block"></span> Unanswered</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-400 inline-block"></span> Flagged</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-primary-100 border-2 border-primary-500 inline-block"></span> Current</span>
+            </div>
+
             <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
               {session.questions.map((q, i) => {
                 const answer = session.answers[i];
-                let className = 'p-2 rounded-lg text-center text-sm font-medium border-2 ';
+                let className = 'p-3 rounded-lg text-center text-sm font-medium border-2 transition-all cursor-pointer ';
+                
                 if (i === currentIndex) {
-                  className += 'border-primary-500 bg-primary-50 ';
+                  className += 'border-primary-500 bg-primary-100 ring-2 ring-primary-200 ';
                 } else if (answer?.isFlagged) {
                   className += 'border-yellow-400 bg-yellow-50 ';
                 } else if (answer?.selectedChoiceId) {
                   className += 'border-green-500 bg-green-50 ';
                 } else {
-                  className += 'border-gray-200 ';
+                  className += 'border-gray-200 bg-white hover:border-gray-400 ';
                 }
+                
                 return (
                   <button
                     key={q.id}
@@ -176,6 +219,10 @@ export const ExamSessionContainer: React.FC = () => {
                 );
               })}
             </div>
+            
+            <div className="mt-4 text-center text-sm text-gray-500">
+              {answeredCount} of {session.questions.length} answered
+            </div>
           </div>
         </div>
       )}
@@ -184,20 +231,20 @@ export const ExamSessionContainer: React.FC = () => {
       {showSubmitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-sm p-6 text-center">
-            <p className="text-4xl mb-4">⚠️</p>
-            <h3 className="text-lg font-bold mb-2">Submit Exam?</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              You have answered {answeredCount} of {session.questions.length} questions.
-              {session.questions.length - answeredCount > 0 && (
-                <span className="text-red-500 font-medium"> {session.questions.length - answeredCount} unanswered!</span>
-              )}
+            <p className="text-4xl mb-4">✅</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Submit Exam?</h3>
+            <p className="text-sm text-gray-600 mb-2">
+              You have answered all {session.questions.length} questions.
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Time remaining: {formatTime(timeRemaining)}
             </p>
             <div className="space-y-2">
-              <button onClick={handleSubmit} className="w-full bg-exam-DEFAULT text-white py-2 rounded-lg font-semibold">
-                Yes, Submit
+              <button onClick={handleConfirmSubmit} className="w-full bg-exam-DEFAULT hover:bg-exam-dark text-white py-2.5 rounded-lg font-semibold transition-colors">
+                Yes, Submit Exam
               </button>
-              <button onClick={() => setShowSubmitModal(false)} className="w-full btn-secondary py-2">
-                Continue Exam
+              <button onClick={() => setShowSubmitModal(false)} className="w-full btn-secondary py-2.5">
+                Continue Reviewing
               </button>
             </div>
           </div>
