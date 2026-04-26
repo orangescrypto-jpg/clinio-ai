@@ -107,99 +107,196 @@ export const PostDetailContainer: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+      <div className="max-w-3xl mx-auto text-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-600 border-t-transparent mx-auto"></div>
+        <p className="text-gray-400 mt-4 text-sm">Loading post...</p>
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-12">
-        <p className="text-4xl mb-4">📝</p>
+      <div className="max-w-3xl mx-auto text-center py-20 px-4">
+        <p className="text-5xl mb-4">📝</p>
         <h3 className="text-lg font-semibold text-gray-700 mb-2">Post Not Found</h3>
-        <p className="text-gray-500 mb-4">The post you're looking for doesn't exist or has been removed.</p>
-        <button onClick={() => navigate('/feed')} className="btn-secondary">← Back to Clinio Room</button>
+        <p className="text-gray-500 text-sm mb-6">The post you're looking for doesn't exist or has been removed.</p>
+        <button onClick={() => navigate('/feed')} className="btn-secondary text-sm">← Back to Clinio Room</button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Back */}
-      <button onClick={() => navigate('/feed')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-        ← Back to Clinio Room
+    <div className="max-w-3xl mx-auto space-y-5 px-0 sm:px-4">
+      {/* Back Button */}
+      <button 
+        onClick={() => navigate('/feed')} 
+        className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 py-2 -ml-1"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Clinio Room
       </button>
 
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">{post.topic}</span>
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{post.category}</span>
-          {post.hasVideo && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">🎬 Video</span>}
+      <div className="space-y-3">
+        {/* Tags */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-block text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">
+            {post.topic}
+          </span>
+          <span className="inline-block text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">
+            {post.category}
+          </span>
+          {post.hasVideo && (
+            <span className="inline-block text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">
+              🎬 Video
+            </span>
+          )}
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{post.title}</h1>
-        <div className="text-sm text-gray-400">
-          {post.category}{post.subCategory ? ` · ${post.subCategory}` : ''} · {post.readTime} · {post.createdAt}
+
+        {/* Title */}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+          {post.title}
+        </h1>
+
+        {/* Meta */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-400">
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {post.author}
+          </span>
+          <span className="hidden sm:inline">·</span>
+          <span>{post.readTime}</span>
+          <span className="hidden sm:inline">·</span>
+          <span>{post.createdAt}</span>
+          {post.subCategory && (
+            <>
+              <span className="hidden sm:inline">·</span>
+              <span>{post.subCategory}</span>
+            </>
+          )}
         </div>
       </div>
 
       {/* Image */}
       {post.imageUrl && (
-        <div className="card overflow-hidden">
-          <img src={post.imageUrl} alt={post.title} className="w-full max-h-96 object-cover rounded-lg" />
+        <div className="-mx-4 sm:mx-0">
+          <img 
+            src={post.imageUrl} 
+            alt={post.title} 
+            className="w-full h-48 sm:h-64 md:h-80 object-cover sm:rounded-xl"
+            loading="lazy"
+          />
         </div>
       )}
 
       {/* Video */}
       {post.hasVideo && post.videoUrl && (
-        <div className="card overflow-hidden">
-          <div className="aspect-video">
-            <iframe src={post.videoUrl} title="Video lesson" className="w-full h-full" allowFullScreen />
+        <div className="-mx-4 sm:mx-0">
+          <div className="aspect-video bg-black sm:rounded-xl overflow-hidden">
+            <iframe 
+              src={post.videoUrl} 
+              title="Video lesson" 
+              className="w-full h-full" 
+              allowFullScreen
+              loading="lazy"
+            />
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="card">
-        <div className="prose prose-gray max-w-none text-gray-700 leading-relaxed">
-          <div dangerouslySetInnerHTML={{ __html: post.content }} />
-        </div>
+      <div className="bg-white sm:rounded-xl sm:border sm:border-gray-100 -mx-4 sm:mx-0 px-4 sm:px-6 py-5 sm:py-8">
+        <div 
+          className="prose prose-sm sm:prose-base max-w-none text-gray-700 
+            prose-headings:text-gray-900 prose-headings:font-bold
+            prose-h2:text-lg sm:prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
+            prose-h3:text-base sm:prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2
+            prose-p:text-sm sm:prose-p:text-base prose-p:leading-relaxed
+            prose-li:text-sm sm:prose-li:text-base
+            prose-strong:text-gray-900
+            [&_h2]:border-b [&_h2]:border-gray-100 [&_h2]:pb-2"
+          dangerouslySetInnerHTML={{ __html: post.content }} 
+        />
       </div>
 
       {/* Related Quiz */}
       {post.relatedQuiz && (
-        <Link to={`/rapid-quiz?topic=${encodeURIComponent(post.relatedQuiz)}`} className="card border-2 border-primary-200 bg-primary-50 hover:bg-primary-100 transition-colors flex items-center justify-between p-5">
+        <Link 
+          to={`/rapid-quiz?topic=${encodeURIComponent(post.relatedQuiz)}`} 
+          className="flex items-center justify-between p-4 sm:p-5 bg-primary-50 border-2 border-primary-200 rounded-xl hover:bg-primary-100 transition-colors -mx-4 sm:mx-0"
+        >
           <div>
-            <p className="font-semibold text-primary-700">📝 Try Related Quiz</p>
-            <p className="text-sm text-primary-500">Test your knowledge on {post.relatedQuiz}</p>
+            <p className="font-semibold text-primary-700 text-sm sm:text-base">📝 Try Related Quiz</p>
+            <p className="text-xs sm:text-sm text-primary-500 mt-0.5">Test your knowledge on {post.relatedQuiz}</p>
           </div>
-          <span className="text-primary-600 text-xl">→</span>
+          <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </Link>
       )}
 
-      {/* Comments */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-900">💬 Comments ({comments.length})</h3>
+      {/* Divider */}
+      <div className="border-t border-gray-200 pt-2" />
 
-        <form onSubmit={handleAddComment} className="card p-4 space-y-3">
-          <input type="text" placeholder="Your name" value={newName} onChange={e => setNewName(e.target.value)} className="input-field text-sm" required />
-          <textarea placeholder="Write a comment..." value={newMessage} onChange={e => setNewMessage(e.target.value)} className="input-field text-sm" rows={3} required />
-          <button type="submit" className="btn-primary text-sm">Post Comment</button>
+      {/* Comments Section */}
+      <div className="space-y-4">
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+          💬 Comments
+          <span className="text-sm font-normal text-gray-400">({comments.length})</span>
+        </h3>
+
+        {/* Add Comment Form */}
+        <form onSubmit={handleAddComment} className="space-y-3 bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
+          <input 
+            type="text" 
+            placeholder="Your name" 
+            value={newName} 
+            onChange={e => setNewName(e.target.value)} 
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+            required 
+          />
+          <textarea 
+            placeholder="Write a comment..." 
+            value={newMessage} 
+            onChange={e => setNewMessage(e.target.value)} 
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
+            rows={3} 
+            required 
+          />
+          <button 
+            type="submit" 
+            className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all"
+          >
+            Post Comment
+          </button>
         </form>
 
-        {comments.map(comment => (
-          <div key={comment.id} className="card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900 text-sm">{comment.name}</span>
-              <span className="text-xs text-gray-400">{new Date(comment.timestamp).toLocaleDateString()}</span>
+        {/* Comments List */}
+        <div className="space-y-3">
+          {comments.map(comment => (
+            <div key={comment.id} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900 text-sm">{comment.name}</span>
+                <span className="text-xs text-gray-400">
+                  {new Date(comment.timestamp).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </span>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed">{comment.message}</p>
             </div>
-            <p className="text-sm text-gray-700">{comment.message}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="pb-8" />
+      {/* Bottom Spacing for mobile nav */}
+      <div className="pb-20 sm:pb-8" />
     </div>
   );
 };
