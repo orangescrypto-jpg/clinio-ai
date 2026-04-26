@@ -13,7 +13,6 @@ import { AboutPage } from '../features/pages/AboutPage';
 import { ContactPage } from '../features/pages/ContactPage';
 import { PrivacyPage } from '../features/pages/PrivacyPage';
 import { TermsPage } from '../features/pages/TermsPage';
-import { AddPost } from '../features/admin/AddPost';
 
 export const router = createBrowserRouter([
   {
@@ -33,7 +32,6 @@ export const router = createBrowserRouter([
       { path: 'contact', element: <ContactPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
-      { path: 'admin/add-post', element: <AddPost /> },
     ],
   },
 ]);
