@@ -22,36 +22,35 @@ interface Post {
 
 interface Comment {
   id: string;
+  postId: string;
   name: string;
   message: string;
   timestamp: string;
-  postId: string;
 }
+
+const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const PostDetailContainer: React.FC = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
 
   const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([
-    { id: 'c1', name: 'NursingStudent', message: 'Great explanation! Very helpful for my studies.', timestamp: '2026-04-25', postId: '' },
-    { id: 'c2', name: 'MedLearner', message: 'Can you add more practice questions on this topic?', timestamp: '2026-04-24', postId: '' },
-  ]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newName, setNewName] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingComments, setLoadingComments] = useState(true);
 
   useEffect(() => {
     if (postId) {
       fetchPost();
+      fetchComments();
     }
   }, [postId]);
 
   const fetchPost = async () => {
     try {
-      const response = await fetch(
-        `https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents/posts/${postId}`
-      );
+      const response = await fetch(`${FIRESTORE_URL}/posts/${postId}`);
       
       if (!response.ok) {
         setPost(null);
@@ -88,21 +87,66 @@ export const PostDetailContainer: React.FC = () => {
     }
   };
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`${FIRESTORE_URL}/comments?orderBy=timestamp%20desc`);
+      const data = await response.json();
+      if (data.documents) {
+        const fetchedComments = data.documents
+          .map((doc: any) => {
+            const f = doc.fields;
+            return {
+              id: doc.name.split('/').pop(),
+              postId: f.postId?.stringValue || '',
+              name: f.name?.stringValue || '',
+              message: f.message?.stringValue || '',
+              timestamp: f.timestamp?.stringValue || '',
+            };
+          })
+          .filter((c: Comment) => c.postId === postId);
+        setComments(fetchedComments);
+      }
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const saveComment = async (comment: Omit<Comment, 'id'>) => {
+    try {
+      await fetch(`${FIRESTORE_URL}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            postId: { stringValue: comment.postId },
+            name: { stringValue: comment.name },
+            message: { stringValue: comment.message },
+            timestamp: { stringValue: comment.timestamp },
+          },
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save comment:', err);
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newMessage.trim()) return;
 
-    const comment: Comment = {
-      id: 'c' + Date.now(),
+    const newComment = {
+      postId: postId || '',
       name: newName.trim(),
       message: newMessage.trim(),
       timestamp: new Date().toISOString(),
-      postId: postId || '',
     };
 
-    setComments([comment, ...comments]);
+    await saveComment(newComment);
     setNewName('');
     setNewMessage('');
+    fetchComments();
   };
 
   if (loading) {
@@ -140,56 +184,26 @@ export const PostDetailContainer: React.FC = () => {
 
       {/* Header */}
       <div className="space-y-3">
-        {/* Tags */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-block text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">
-            {post.topic}
-          </span>
-          <span className="inline-block text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">
-            {post.category}
-          </span>
-          {post.hasVideo && (
-            <span className="inline-block text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">
-              🎬 Video
-            </span>
-          )}
+          <span className="inline-block text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>
+          <span className="inline-block text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
+          {post.hasVideo && <span className="inline-block text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬 Video</span>}
         </div>
-
-        {/* Title */}
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-          {post.title}
-        </h1>
-
-        {/* Meta */}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{post.title}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-400">
-          <span className="flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            {post.author}
-          </span>
+          <span>{post.author}</span>
           <span className="hidden sm:inline">·</span>
           <span>{post.readTime}</span>
           <span className="hidden sm:inline">·</span>
           <span>{post.createdAt}</span>
-          {post.subCategory && (
-            <>
-              <span className="hidden sm:inline">·</span>
-              <span>{post.subCategory}</span>
-            </>
-          )}
+          {post.subCategory && (<><span className="hidden sm:inline">·</span><span>{post.subCategory}</span></>)}
         </div>
       </div>
 
       {/* Image */}
       {post.imageUrl && (
         <div className="-mx-4 sm:mx-0">
-          <img 
-            src={post.imageUrl} 
-            alt={post.title} 
-            className="w-full h-48 sm:h-64 md:h-80 object-cover sm:rounded-xl"
-            loading="lazy"
-          />
+          <img src={post.imageUrl} alt={post.title} className="w-full h-48 sm:h-64 md:h-80 object-cover sm:rounded-xl" loading="lazy" />
         </div>
       )}
 
@@ -197,38 +211,21 @@ export const PostDetailContainer: React.FC = () => {
       {post.hasVideo && post.videoUrl && (
         <div className="-mx-4 sm:mx-0">
           <div className="aspect-video bg-black sm:rounded-xl overflow-hidden">
-            <iframe 
-              src={post.videoUrl} 
-              title="Video lesson" 
-              className="w-full h-full" 
-              allowFullScreen
-              loading="lazy"
-            />
+            <iframe src={post.videoUrl} title="Video lesson" className="w-full h-full" allowFullScreen loading="lazy" />
           </div>
         </div>
       )}
 
       {/* Content */}
       <div className="bg-white sm:rounded-xl sm:border sm:border-gray-100 -mx-4 sm:mx-0 px-4 sm:px-6 py-5 sm:py-8">
-        <div 
-          className="prose prose-sm sm:prose-base max-w-none text-gray-700 
-            prose-headings:text-gray-900 prose-headings:font-bold
-            prose-h2:text-lg sm:prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
-            prose-h3:text-base sm:prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2
-            prose-p:text-sm sm:prose-p:text-base prose-p:leading-relaxed
-            prose-li:text-sm sm:prose-li:text-base
-            prose-strong:text-gray-900
-            [&_h2]:border-b [&_h2]:border-gray-100 [&_h2]:pb-2"
+        <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 prose-headings:text-gray-900 prose-headings:font-bold prose-h2:text-lg sm:prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3 prose-h3:text-base sm:prose-h3:text-lg prose-p:text-sm sm:prose-p:text-base prose-p:leading-relaxed prose-li:text-sm sm:prose-li:text-base prose-strong:text-gray-900 [&_h2]:border-b [&_h2]:border-gray-100 [&_h2]:pb-2"
           dangerouslySetInnerHTML={{ __html: post.content }} 
         />
       </div>
 
       {/* Related Quiz */}
       {post.relatedQuiz && (
-        <Link 
-          to={`/rapid-quiz?topic=${encodeURIComponent(post.relatedQuiz)}`} 
-          className="flex items-center justify-between p-4 sm:p-5 bg-primary-50 border-2 border-primary-200 rounded-xl hover:bg-primary-100 transition-colors -mx-4 sm:mx-0"
-        >
+        <Link to={`/rapid-quiz?topic=${encodeURIComponent(post.relatedQuiz)}`} className="flex items-center justify-between p-4 sm:p-5 bg-primary-50 border-2 border-primary-200 rounded-xl hover:bg-primary-100 transition-colors -mx-4 sm:mx-0">
           <div>
             <p className="font-semibold text-primary-700 text-sm sm:text-base">📝 Try Related Quiz</p>
             <p className="text-xs sm:text-sm text-primary-500 mt-0.5">Test your knowledge on {post.relatedQuiz}</p>
@@ -239,63 +236,40 @@ export const PostDetailContainer: React.FC = () => {
         </Link>
       )}
 
-      {/* Divider */}
       <div className="border-t border-gray-200 pt-2" />
 
-      {/* Comments Section */}
+      {/* Comments */}
       <div className="space-y-4">
         <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
           💬 Comments
           <span className="text-sm font-normal text-gray-400">({comments.length})</span>
         </h3>
 
-        {/* Add Comment Form */}
         <form onSubmit={handleAddComment} className="space-y-3 bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
-          <input 
-            type="text" 
-            placeholder="Your name" 
-            value={newName} 
-            onChange={e => setNewName(e.target.value)} 
-            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
-            required 
-          />
-          <textarea 
-            placeholder="Write a comment..." 
-            value={newMessage} 
-            onChange={e => setNewMessage(e.target.value)} 
-            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
-            rows={3} 
-            required 
-          />
-          <button 
-            type="submit" 
-            className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all"
-          >
-            Post Comment
-          </button>
+          <input type="text" placeholder="Your name" value={newName} onChange={e => setNewName(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" required />
+          <textarea placeholder="Write a comment..." value={newMessage} onChange={e => setNewMessage(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none" rows={3} required />
+          <button type="submit" className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all">Post Comment</button>
         </form>
 
-        {/* Comments List */}
-        <div className="space-y-3">
-          {comments.map(comment => (
-            <div key={comment.id} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-900 text-sm">{comment.name}</span>
-                <span className="text-xs text-gray-400">
-                  {new Date(comment.timestamp).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </span>
+        {loadingComments ? (
+          <p className="text-sm text-gray-400 text-center py-4">Loading comments...</p>
+        ) : comments.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No comments yet. Be the first!</p>
+        ) : (
+          <div className="space-y-3">
+            {comments.map(comment => (
+              <div key={comment.id} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900 text-sm">{comment.name}</span>
+                  <span className="text-xs text-gray-400">{new Date(comment.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">{comment.message}</p>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">{comment.message}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Bottom Spacing for mobile nav */}
       <div className="pb-20 sm:pb-8" />
     </div>
   );
