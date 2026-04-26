@@ -6,6 +6,7 @@ interface Scenario {
   title: string;
   preview: string;
   topic: string;
+  category: string;
   readTime: string;
   createdAt: string;
 }
@@ -34,12 +35,15 @@ export const ScenarioContainer: React.FC = () => {
               title: f.title?.stringValue || '',
               preview: f.preview?.stringValue || '',
               topic: f.topic?.stringValue || '',
+              category: f.category?.stringValue || '',
               subCategory: f.subCategory?.stringValue || '',
               readTime: f.readTime?.stringValue || '',
               createdAt: f.createdAt?.stringValue || '',
             };
           })
-          .filter((p: any) => p.subCategory === 'OSCE' || p.topic === 'Clinical Scenario' || p.title?.toLowerCase().includes('osce'));
+          .filter((p: any) => 
+            p.subCategory === 'OSCE'
+          );
         
         setScenarios(allPosts);
       }
@@ -69,7 +73,7 @@ export const ScenarioContainer: React.FC = () => {
       {scenarios.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-4xl mb-4">🏥</p>
-          <p className="text-gray-500">No OSCE scenarios yet. Check back soon!</p>
+          <p className="text-gray-500">No OSCE scenarios yet. Create one in the admin panel!</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -80,9 +84,14 @@ export const ScenarioContainer: React.FC = () => {
               className="card p-6 block hover:shadow-md transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
-                <span className="text-xs bg-clinical-light text-clinical-dark px-2 py-0.5 rounded-full font-medium">
-                  {scenario.topic}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-clinical-light text-clinical-dark px-2 py-0.5 rounded-full font-medium">
+                    {scenario.topic}
+                  </span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                    {scenario.category}
+                  </span>
+                </div>
                 <span className="text-sm text-gray-400">{scenario.readTime}</span>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">
