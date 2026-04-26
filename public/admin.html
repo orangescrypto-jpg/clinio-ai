@@ -1,141 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clinio AI - Add Post</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: #f3f4f6; padding: 20px; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h1 { color: #2563eb; margin-bottom: 5px; }
-        .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
-        label { display: block; font-weight: 600; margin: 15px 0 5px; font-size: 14px; color: #374151; }
-        input, textarea, select { width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; }
-        textarea { min-height: 100px; resize: vertical; }
-        button { width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 25px; transition: background 0.2s; }
-        button:hover { background: #1d4ed8; }
-        button:disabled { background: #9ca3af; cursor: not-allowed; }
-        .success { background: #dcfce7; color: #166534; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; display: none; font-weight: 500; }
-        .info { background: #dbeafe; color: #1e40af; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
-        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; }
-        .checkbox-group input[type="checkbox"] { width: auto; }
-        .checkbox-group label { margin: 0; }
-        .field-hint { font-size: 12px; color: #9ca3af; margin-top: 3px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinio AI - Admin</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #2563eb; margin-bottom: 20px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+    input, textarea, select { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 14px; }
+    textarea { resize: vertical; min-height: 200px; font-family: monospace; }
+    button { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #1d4ed8; }
+    button.delete { background: #ef4444; margin-left: 8px; }
+    button.delete:hover { background: #dc2626; }
+    button.edit { background: #f59e0b; margin-left: 8px; }
+    .post-item { padding: 14px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .msg { padding: 12px; border-radius: 8px; margin-bottom: 14px; }
+    .msg.success { background: #d1fae5; color: #065f46; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    img.preview { max-height: 150px; border-radius: 8px; margin-top: 8px; }
+    a { color: #2563eb; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📝 Add New Post</h1>
-        <p class="subtitle">Publish educational content to Clinio Room</p>
+  <div class="container">
+    <h1>🛠️ Clinio AI Admin</h1>
+    <div id="msg"></div>
+    
+    <div class="card">
+      <h2 id="formTitle">📝 New Post</h2>
+      <form id="postForm">
+        <input type="hidden" id="postId">
         
-        <div class="info">
-            💡 <strong>Tip:</strong> Fill all fields and click Publish. Post appears instantly on your site!
-        </div>
-
-        <form id="postForm">
-            <label>📌 Title *</label>
-            <input type="text" id="title" required placeholder="e.g. Understanding Heart Failure Management">
-            
-            <label>📄 Preview (shown on homepage) *</label>
-            <textarea id="preview" required placeholder="Short 1-2 sentence summary..."></textarea>
-            
-            <label>📝 Full Content *</label>
-            <textarea id="content" required placeholder="Write your full article here..." style="min-height:250px"></textarea>
-            
-            <label>🖼️ Image URL (optional)</label>
-            <input type="url" id="imageUrl" placeholder="https://example.com/image.jpg">
-            <p class="field-hint">Paste a direct image link. Upload images to imgur.com or similar first.</p>
-            
-            <div class="checkbox-group">
-                <input type="checkbox" id="hasVideo">
-                <label>🎬 This post has a YouTube video</label>
-            </div>
-            
-            <div id="videoSection" style="display:none;">
-                <label>📺 YouTube Embed URL</label>
-                <input type="url" id="videoUrl" placeholder="https://www.youtube.com/embed/VIDEO_ID">
-                <p class="field-hint">Use the embed URL format: youtube.com/embed/...</p>
-            </div>
-            
-            <label>📂 Category *</label>
-            <select id="category" required>
-                <option value="">Select category...</option>
-                <option value="Clinical Medicine">🏥 Clinical Medicine</option>
-                <option value="NCLEX">🩺 NCLEX</option>
-                <option value="NMCN">🇳🇬 NMCN</option>
+        <label>Title *</label>
+        <input type="text" id="title" required>
+        
+        <label>Preview (short summary) *</label>
+        <textarea id="preview" rows="2" required></textarea>
+        
+        <label>Content (HTML supported) *</label>
+        <textarea id="content" rows="10" required></textarea>
+        
+        <label>Image URL <small>(<a href="https://imgbb.com" target="_blank">Upload to imgbb.com</a>, paste link)</small></label>
+        <input type="url" id="imageUrl" placeholder="https://i.ibb.co/example.jpg">
+        <img id="imagePreview" class="preview" style="display:none;">
+        
+        <div class="grid">
+          <div>
+            <label>Category</label>
+            <select id="category">
+              <option>Clinical Medicine</option>
+              <option>NCLEX</option>
+              <option>NMCN</option>
             </select>
-            
-            <label>🏷️ Topic</label>
-            <input type="text" id="topic" placeholder="e.g. Cardiovascular, Pharmacology, Nursing Fundamentals">
-            
-            <button type="submit" id="submitBtn">📢 Publish Post</button>
-        </form>
+          </div>
+          <div>
+            <label>Topic</label>
+            <input type="text" id="topic" value="Cardiovascular">
+          </div>
+        </div>
         
-        <div class="success" id="success">✅ Post Published Successfully! Redirecting...</div>
+        <div class="grid">
+          <div>
+            <label>SubCategory</label>
+            <input type="text" id="subCategory" value="Cardiology">
+          </div>
+          <div>
+            <label>Read Time</label>
+            <input type="text" id="readTime" value="5 min read">
+          </div>
+        </div>
+        
+        <label>
+          <input type="checkbox" id="hasVideo"> Has Video
+        </label>
+        <input type="url" id="videoUrl" placeholder="YouTube embed URL" style="display:none;">
+        
+        <button type="submit" id="submitBtn">🚀 Publish Post</button>
+        <button type="button" id="cancelBtn" style="background:#6b7280; display:none;">Cancel</button>
+      </form>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCN6PHO9vXgj2UcdUpQ76fPPigkfwmKhEg",
-            authDomain: "clinio-ai.firebaseapp.com",
-            projectId: "clinio-ai",
-            storageBucket: "clinio-ai.firebasestorage.app",
-            messagingSenderId: "1092363872596",
-            appId: "1:1092363872596:web:4dcb10a7bc89e54a78c0c1"
-        };
+    <div class="card">
+      <h2>📋 All Posts (<span id="postCount">0</span>)</h2>
+      <div id="postsList"></div>
+    </div>
+  </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+  <script>
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCN6PHO9vXgj2UcdUpQ76fPPigkfwmKhEg",
+      authDomain: "clinio-ai.firebaseapp.com",
+      projectId: "clinio-ai",
+      storageBucket: "clinio-ai.appspot.com",
+      messagingSenderId: "1092363872596",
+      appId: "1:1092363872596:web:4dcb10a7bc89e54a78c0c1"
+    };
 
-        // Show/hide video field
-        document.getElementById('hasVideo').addEventListener('change', function() {
-            document.getElementById('videoSection').style.display = this.checked ? 'block' : 'none';
-        });
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        document.getElementById('postForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Publishing...';
+    let editingId = null;
 
-            const hasVideo = document.getElementById('hasVideo').checked;
-            
-            const post = {
-                title: document.getElementById('title').value,
-                preview: document.getElementById('preview').value,
-                content: document.getElementById('content').value,
-                imageUrl: document.getElementById('imageUrl').value || '',
-                category: document.getElementById('category').value,
-                topic: document.getElementById('topic').value || 'General',
-                author: 'Clinio AI',
-                readTime: Math.ceil(document.getElementById('content').value.split(' ').length / 200) + ' min read',
-                hasVideo: hasVideo,
-                videoUrl: hasVideo ? document.getElementById('videoUrl').value : '',
-                likes: 0,
-                comments: 0,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+    function showMsg(text, type) {
+      const msg = document.getElementById('msg');
+      msg.innerHTML = `<div class="msg ${type}">${text}</div>`;
+      setTimeout(() => msg.innerHTML = '', 3000);
+    }
 
-            try {
-                await db.collection('posts').add(post);
-                document.getElementById('success').style.display = 'block';
-                document.getElementById('postForm').reset();
-                
-                setTimeout(() => {
-                    window.location.href = '/feed';
-                }, 2000);
-            } catch (error) {
-                alert('Error: ' + error.message);
-                btn.disabled = false;
-                btn.textContent = '📢 Publish Post';
-            }
-        });
-    </script>
+    async function loadPosts() {
+      const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
+      const posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('postCount').textContent = posts.length;
+      
+      document.getElementById('postsList').innerHTML = posts.map(p => `
+        <div class="post-item">
+          <div>
+            <strong>${p.title}</strong><br>
+            <small>${p.category} · ${p.topic} · ${p.readTime}</small>
+          </div>
+          <div>
+            <button onclick='editPost("${p.id}")'>✏️</button>
+            <button class="delete" onclick='deletePost("${p.id}")'>🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function savePost(e) {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('title').value,
+        preview: document.getElementById('preview').value,
+        content: document.getElementById('content').value,
+        imageUrl: document.getElementById('imageUrl').value,
+        topic: document.getElementById('topic').value,
+        category: document.getElementById('category').value,
+        subCategory: document.getElementById('subCategory').value,
+        author: 'Clinio AI',
+        readTime: document.getElementById('readTime').value,
+        hasVideo: document.getElementById('hasVideo').checked,
+        videoUrl: document.getElementById('videoUrl').value,
+        likes: 0,
+        comments: 0,
+        createdAt: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('posts').doc(editingId).update(data);
+          showMsg('✅ Post updated!', 'success');
+        } else {
+          await db.collection('posts').add(data);
+          showMsg('✅ Post published!', 'success');
+        }
+        resetForm();
+        loadPosts();
+      } catch (err) {
+        showMsg('❌ Error: ' + err.message, 'error');
+      }
+    }
+
+    window.editPost = async (id) => {
+      const doc = await db.collection('posts').doc(id).get();
+      const data = doc.data();
+      editingId = id;
+      document.getElementById('formTitle').textContent = '✏️ Edit Post';
+      document.getElementById('postId').value = id;
+      document.getElementById('title').value = data.title;
+      document.getElementById('preview').value = data.preview;
+      document.getElementById('content').value = data.content;
+      document.getElementById('imageUrl').value = data.imageUrl || '';
+      document.getElementById('topic').value = data.topic;
+      document.getElementById('category').value = data.category;
+      document.getElementById('subCategory').value = data.subCategory;
+      document.getElementById('readTime').value = data.readTime;
+      document.getElementById('hasVideo').checked = data.hasVideo;
+      document.getElementById('videoUrl').value = data.videoUrl || '';
+      document.getElementById('submitBtn').textContent = '💾 Update Post';
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+      if (data.imageUrl) {
+        document.getElementById('imagePreview').src = data.imageUrl;
+        document.getElementById('imagePreview').style.display = 'block';
+      }
+    };
+
+    window.deletePost = async (id) => {
+      if (confirm('Delete this post?')) {
+        await db.collection('posts').doc(id).delete();
+        showMsg('🗑️ Post deleted', 'success');
+        loadPosts();
+      }
+    };
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById('formTitle').textContent = '📝 New Post';
+      document.getElementById('postForm').reset();
+      document.getElementById('submitBtn').textContent = '🚀 Publish Post';
+      document.getElementById('cancelBtn').style.display = 'none';
+      document.getElementById('imagePreview').style.display = 'none';
+    }
+
+    document.getElementById('postForm').addEventListener('submit', savePost);
+    document.getElementById('cancelBtn').addEventListener('click', resetForm);
+    document.getElementById('hasVideo').addEventListener('change', function() {
+      document.getElementById('videoUrl').style.display = this.checked ? 'block' : 'none';
+    });
+    document.getElementById('imageUrl').addEventListener('input', function() {
+      const preview = document.getElementById('imagePreview');
+      if (this.value) {
+        preview.src = this.value;
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+
+    loadPosts();
+  </script>
 </body>
 </html>
