@@ -1,6 +1,5 @@
 const FIREBASE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
-// NEW: Fetch from Firebase
 export async function fetchCategories(): Promise<any[]> {
   try {
     const response = await fetch(`${FIREBASE_URL}/categories`);
@@ -74,10 +73,3 @@ export async function fetchTopics(subCategoryId?: string): Promise<any[]> {
   }
   return [];
 }
-
-// OLD: Keep for files that still use these (will update later)
-export const categories: any[] = [];
-export const subCategories: any[] = [];
-export const topics: any[] = [];
-export const getSubCategories = (id: string) => [];
-export const getTopics = (id: string) => [];
