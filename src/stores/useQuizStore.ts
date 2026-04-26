@@ -77,7 +77,15 @@ export const useQuizStore = create<QuizState>((set, get) => ({
 
     const nextIndex = currentIndex + 1;
     if (nextIndex >= session.questions.length) {
-      set({ isComplete: true });
+      set({
+        isComplete: true,
+        session: {
+          ...session,
+          currentIndex: nextIndex,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        },
+      });
     } else {
       set({
         currentQuestion: session.questions[nextIndex],
