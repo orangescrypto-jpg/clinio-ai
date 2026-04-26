@@ -1,48 +1,118 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExamStore } from '../../stores/useExamStore';
-import { ExamResult, QuestionResult } from '../../types';
+import { QuestionResult } from '../../types';
 
-// Mock result data (in production, this comes from backend)
-const MOCK_RESULTS: ExamResult = {
-  id: 'result_1',
-  score: 16,
-  totalQuestions: 20,
-  percentage: 80,
-  timeSpentSeconds: 2700,
-  questions: [
-    {
-      questionId: 'q1',
-      stem: 'A 65-year-old patient with heart failure presents with dyspnea and bilateral crackles. Which medication should the nurse administer first?',
-      userChoiceText: 'Furosemide (Lasix) 40mg IV',
-      correctChoiceText: 'Furosemide (Lasix) 40mg IV',
-      isCorrect: true,
-      explanation: 'Furosemide is a loop diuretic that provides rapid relief of pulmonary congestion.',
-      topicName: 'Heart Failure',
-    },
-    {
-      questionId: 'q2',
-      stem: 'Which finding indicates that digoxin therapy is effective?',
-      userChoiceText: 'Decreased edema',
-      correctChoiceText: 'Decreased edema',
-      isCorrect: true,
-      explanation: 'Digoxin improves cardiac output, increasing renal perfusion and reducing edema.',
-      topicName: 'Heart Failure',
-    },
-  ],
-};
+const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const ExamResultsContainer: React.FC = () => {
   const navigate = useNavigate();
   const { session, resetExam } = useExamStore();
+  const [questionResults, setQuestionResults] = useState<QuestionResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [score, setScore] = useState({ correct: 0, incorrect: 0, unanswered: 0, total: 0 });
+  const [timeSpent, setTimeSpent] = useState(0);
 
-  // Use mock results for now
-  const result = MOCK_RESULTS;
+  useEffect(() => {
+    if (session) {
+      fetchAnswers();
+      calculateTimeSpent();
+    } else {
+      navigate('/exam');
+    }
+  }, []);
+
+  const calculateTimeSpent = () => {
+    if (session) {
+      const start = new Date(session.startedAt).getTime();
+      const end = session.submittedAt ? new Date(session.submittedAt).getTime() : Date.now();
+      setTimeSpent(Math.floor((end - start) / 1000));
+    }
+  };
+
+  const fetchAnswers = async () => {
+    if (!session) return;
+
+    try {
+      const response = await fetch(`${FIRESTORE_URL}/questions`);
+      const data = await response.json();
+      
+      let correct = 0;
+      let incorrect = 0;
+      let unanswered = 0;
+      const results: QuestionResult[] = [];
+
+      if (data.documents) {
+        const allQuestions = data.documents.map((doc: any) => {
+          const f = doc.fields;
+          return {
+            id: doc.name.split('/').pop(),
+            stem: f.stem?.stringValue || '',
+            correctAnswerId: f.correctAnswerId?.stringValue || '',
+            correctChoiceText: f.choices?.arrayValue?.values?.find(
+              (v: any) => v.mapValue?.fields?.id?.stringValue === f.correctAnswerId?.stringValue
+            )?.mapValue?.fields?.text?.stringValue || 'N/A',
+            explanation: f.explanation?.stringValue || '',
+            topicName: f.topicId?.stringValue?.replace(/-/g, ' ') || 'General',
+          };
+        });
+
+        // Match exam questions with Firebase answers
+        session.questions.forEach((examQ) => {
+          const fullQ = allQuestions.find((q: any) => q.id === examQ.id);
+          const userAnswer = session.answers.find(a => a.questionId === examQ.id);
+          
+          if (fullQ) {
+            const userChoiceId = userAnswer?.selectedChoiceId || null;
+            const selectedChoice = examQ.choices.find(c => c.id === userChoiceId);
+            const isCorrect = userChoiceId === fullQ.correctAnswerId;
+
+            if (!userChoiceId) {
+              unanswered++;
+            } else if (isCorrect) {
+              correct++;
+            } else {
+              incorrect++;
+            }
+
+            results.push({
+              questionId: examQ.id,
+              stem: fullQ.stem,
+              topicName: fullQ.topicName,
+              userChoiceText: selectedChoice?.text || 'Not answered',
+              correctChoiceText: fullQ.correctChoiceText,
+              isCorrect: userChoiceId ? isCorrect : false,
+              explanation: fullQ.explanation,
+              userChoiceId: userChoiceId,
+              correctChoiceId: fullQ.correctAnswerId,
+              topic: fullQ.topicName,
+              category: '',
+              subCategory: '',
+            });
+          }
+        });
+      }
+
+      setQuestionResults(results);
+      setScore({
+        correct,
+        incorrect,
+        unanswered,
+        total: session.questions.length,
+      });
+    } catch (err) {
+      console.error('Failed to load results:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackToSetup = () => {
     resetExam();
     navigate('/exam');
   };
+
+  const percentage = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
 
   const getGrade = (pct: number) => {
     if (pct >= 90) return { label: 'Excellent!', color: 'text-green-600', icon: '🌟' };
@@ -51,15 +121,30 @@ export const ExamResultsContainer: React.FC = () => {
     return { label: 'Keep Practicing', color: 'text-red-600', icon: '📚' };
   };
 
-  const grade = getGrade(result.percentage);
+  const grade = getGrade(percentage);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-600 border-t-transparent mx-auto"></div>
+        <p className="text-gray-400 mt-4 text-sm">Calculating results...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 px-4">
       {/* Score Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-36 h-36 rounded-full border-4 border-primary-500 bg-primary-50 mb-4">
           <div>
-            <p className="text-4xl font-bold text-primary-600">{result.percentage}%</p>
+            <p className="text-4xl font-bold text-primary-600">{percentage}%</p>
           </div>
         </div>
         <p className={`text-xl font-bold ${grade.color}`}>
@@ -69,28 +154,35 @@ export const ExamResultsContainer: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-900">{result.totalQuestions}</p>
+        <div className="card text-center p-4">
+          <p className="text-2xl font-bold text-gray-900">{score.total}</p>
           <p className="text-xs text-gray-500">Questions</p>
         </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-green-600">{result.score}</p>
+        <div className="card text-center p-4">
+          <p className="text-2xl font-bold text-green-600">{score.correct}</p>
           <p className="text-xs text-gray-500">Correct</p>
         </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-red-600">{result.totalQuestions - result.score}</p>
+        <div className="card text-center p-4">
+          <p className="text-2xl font-bold text-red-600">{score.incorrect}</p>
           <p className="text-xs text-gray-500">Incorrect</p>
         </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-900">{Math.floor(result.timeSpentSeconds / 60)}m</p>
+        <div className="card text-center p-4">
+          <p className="text-2xl font-bold text-gray-900">{formatTime(timeSpent)}</p>
           <p className="text-xs text-gray-500">Time Spent</p>
         </div>
       </div>
 
+      {/* Unanswered Warning */}
+      {score.unanswered > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
+          ⚠️ You left {score.unanswered} question(s) unanswered.
+        </div>
+      )}
+
       {/* Answer Review */}
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-gray-900">Answer Review</h3>
-        {result.questions.map((q, i) => (
+        {questionResults.map((q, i) => (
           <div key={q.questionId} className={`card border-l-4 ${q.isCorrect ? 'border-l-green-500' : 'border-l-red-500'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-gray-400">Question {i + 1} · {q.topicName}</span>
@@ -100,9 +192,17 @@ export const ExamResultsContainer: React.FC = () => {
             </div>
             <p className="text-sm text-gray-800 mb-3">{q.stem}</p>
             <div className="text-sm space-y-1 mb-3">
-              <p><span className="text-gray-500">Your answer:</span> <span className={q.isCorrect ? 'text-green-600' : 'text-red-600'}>{q.userChoiceText || 'Not answered'}</span></p>
+              <p>
+                <span className="text-gray-500">Your answer:</span>{' '}
+                <span className={q.isCorrect ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                  {q.userChoiceText}
+                </span>
+              </p>
               {!q.isCorrect && (
-                <p><span className="text-gray-500">Correct answer:</span> <span className="text-green-600">{q.correctChoiceText}</span></p>
+                <p>
+                  <span className="text-gray-500">Correct answer:</span>{' '}
+                  <span className="text-green-600 font-medium">{q.correctChoiceText}</span>
+                </p>
               )}
             </div>
             <div className="bg-gray-50 p-3 rounded-lg">
