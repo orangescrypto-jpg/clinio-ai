@@ -30,7 +30,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
         </svg>
       ),
       url: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
-      color: 'hover:bg-black hover:text-white',
+      color: 'hover:bg-gray-900 hover:text-white hover:border-gray-900',
+      label: 'Tweet',
     },
     {
       name: 'LinkedIn',
@@ -40,7 +41,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
         </svg>
       ),
       url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-      color: 'hover:bg-[#0A66C2] hover:text-white',
+      color: 'hover:bg-[#0A66C2] hover:text-white hover:border-[#0A66C2]',
+      label: 'Post',
     },
     {
       name: 'WhatsApp',
@@ -50,7 +52,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
         </svg>
       ),
       url: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`,
-      color: 'hover:bg-[#25D366] hover:text-white',
+      color: 'hover:bg-[#25D366] hover:text-white hover:border-[#25D366]',
+      label: 'Share',
     },
     {
       name: 'Email',
@@ -60,7 +63,8 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
         </svg>
       ),
       url: `mailto:?subject=${encodedTitle}&body=${encodedSummary}%0A%0A${encodedUrl}`,
-      color: 'hover:bg-gray-600 hover:text-white',
+      color: 'hover:bg-gray-600 hover:text-white hover:border-gray-600',
+      label: 'Email',
     },
     {
       name: 'Copy Link',
@@ -69,37 +73,42 @@ export const ShareButtons: React.FC<ShareButtonsProps> = ({ title, url, summary 
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
       ),
-      color: 'hover:bg-gray-600 hover:text-white',
+      color: 'hover:bg-gray-600 hover:text-white hover:border-gray-600',
+      label: 'Copy',
       onClick: handleCopy,
     },
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-gray-500 font-medium">Share:</span>
-      {shareLinks.map((link) => (
-        link.onClick ? (
-          <button
-            key={link.name}
-            onClick={link.onClick}
-            title={`Share via ${link.name}`}
-            className={`p-2 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
-          >
-            {link.icon}
-          </button>
-        ) : (
-          <a
-            key={link.name}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`Share on ${link.name}`}
-            className={`p-2 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 ${link.color}`}
-          >
-            {link.icon}
-          </a>
-        )
-      ))}
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 py-2">
+      <span className="text-sm font-semibold text-gray-600">Share this post</span>
+      <div className="flex items-center gap-1.5">
+        {shareLinks.map((link) => (
+          link.onClick ? (
+            <button
+              key={link.name}
+              onClick={link.onClick}
+              title={`${link.label} link`}
+              className={`p-2.5 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 flex items-center gap-2 ${link.color}`}
+            >
+              {link.icon}
+              <span className="text-xs font-medium hidden sm:inline">{link.label}</span>
+            </button>
+          ) : (
+            <a
+              key={link.name}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Share on ${link.name}`}
+              className={`p-2.5 rounded-lg border border-gray-200 text-gray-500 transition-all duration-200 flex items-center gap-2 ${link.color}`}
+            >
+              {link.icon}
+              <span className="text-xs font-medium hidden sm:inline">{link.label}</span>
+            </a>
+          )
+        ))}
+      </div>
     </div>
   );
 };
