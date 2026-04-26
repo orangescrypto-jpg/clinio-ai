@@ -50,7 +50,7 @@ export const AdminEditor: React.FC = () => {
 
   const loadPosts = async () => {
     const snapshot = await getDocs(collection(db, 'posts'));
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+    const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Post));
     setPosts(data);
   };
 
@@ -105,7 +105,6 @@ export const AdminEditor: React.FC = () => {
         </div>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="card space-y-4">
         <h3 className="text-xl font-semibold">
           {editingId ? '✏️ Edit Post' : '📝 New Post'}
@@ -248,7 +247,6 @@ export const AdminEditor: React.FC = () => {
         </div>
       </form>
 
-      {/* Posts List */}
       <div className="space-y-4">
         <h3 className="text-xl font-semibold">📋 All Posts ({posts.length})</h3>
         {posts.map(post => (
