@@ -14,6 +14,7 @@ import { ContactPage } from '../features/pages/ContactPage';
 import { PrivacyPage } from '../features/pages/PrivacyPage';
 import { TermsPage } from '../features/pages/TermsPage';
 import { DisclaimerPage } from '../features/pages/DisclaimerPage';
+import { PracticeExamsContainer } from '../features/practice-exams/PracticeExamsContainer';
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: 'rapid-quiz', element: <RapidQuizContainer /> },
       { path: 'scenarios', element: <ScenarioContainer /> },
       { path: 'scenarios/:scenarioId', element: <ScenarioPlayerContainer /> },
+      { path: 'practice-exams', element: <PracticeExamsContainer /> },
       { path: 'feed', element: <FeedContainer /> },
       { path: 'feed/:postId', element: <PostDetailContainer /> },
       { path: 'exam', element: <ExamSetupContainer /> },
