@@ -60,11 +60,16 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchLatestPosts();
-    fetchScenarioPosts();
-    fetchPracticePosts();
-    fetchQuizTopics();
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    const allPosts = await fetchAllPosts();
+    fetchLatestPosts(allPosts);
+    fetchScenarioPosts(allPosts);
+    fetchPracticePosts(allPosts);
+    fetchQuizTopics();
+  };
 
   const fetchAllPosts = async (): Promise<Post[]> => {
     try {
@@ -93,27 +98,33 @@ export const HomePage: React.FC = () => {
     return [];
   };
 
-  const fetchLatestPosts = async () => {
-    const allPosts = await fetchAllPosts();
+  const fetchLatestPosts = (allPosts: Post[]) => {
     const sorted = allPosts.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
     setLatestPosts(sorted);
     setLoadingPosts(false);
   };
 
-  const fetchScenarioPosts = async () => {
-    const allPosts = await fetchAllPosts();
+  const fetchScenarioPosts = (allPosts: Post[]) => {
     const scenarios = allPosts
-      .filter(p => p.subCategory === 'OSCE' || p.subCategory === 'Clinical Scenario' || p.topic === 'Clinical Scenario')
+      .filter(p => 
+        p.subCategory === 'OSCE' || 
+        p.subCategory === 'Clinical Scenario' || 
+        p.topic === 'Clinical Scenario'
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 6);
     setScenarioPosts(scenarios);
     setLoadingScenarios(false);
   };
 
-  const fetchPracticePosts = async () => {
-    const allPosts = await fetchAllPosts();
+  const fetchPracticePosts = (allPosts: Post[]) => {
     const practice = allPosts
-      .filter(p => p.topic === 'Practice Mode' || p.topic === 'Practice Exam')
+      .filter(p => 
+        p.topic === 'Practice Mode' || 
+        p.topic === 'Practice Exam' ||
+        p.subCategory === 'Practice Mode' ||
+        p.title?.toLowerCase().includes('practice exam')
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 6);
     setPracticePosts(practice);
@@ -273,7 +284,6 @@ export const HomePage: React.FC = () => {
               View All Scenarios <span className="text-xl">→</span>
             </Link>
           </div>
-
           {loadingScenarios ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
@@ -335,7 +345,6 @@ export const HomePage: React.FC = () => {
               View All Practice Exams <span className="text-xl">→</span>
             </Link>
           </div>
-
           {loadingPractice ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
@@ -397,7 +406,6 @@ export const HomePage: React.FC = () => {
               View All Posts <span className="text-xl">→</span>
             </Link>
           </div>
-
           {loadingPosts ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
@@ -463,7 +471,6 @@ export const HomePage: React.FC = () => {
               Start a Quiz <span className="text-xl">→</span>
             </Link>
           </div>
-
           {loadingTopics ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[1, 2, 3, 4, 5].map(i => (
@@ -482,9 +489,7 @@ export const HomePage: React.FC = () => {
                     onClick={() => handleTopicQuizClick(topic.name)}
                     className="card p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer border-2 border-transparent hover:border-primary-200"
                   >
-                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">
-                      {topic.questionCount} Questions
-                    </span>
+                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">{topic.questionCount} Questions</span>
                     <h4 className="font-semibold text-gray-900 mt-2 text-sm">{topic.name}</h4>
                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
                   </button>
@@ -510,14 +515,10 @@ export const HomePage: React.FC = () => {
         <section>
           <div className="bg-gradient-to-r from-primary-600 to-blue-700 rounded-2xl p-8 md:p-12 text-white text-center">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Ace Your Nursing Exams?</h2>
-            <p className="text-primary-100 mb-6 max-w-2xl mx-auto">Join thousands of nursing students using Clinio AI for their exam preparation. 100% free, no login required.</p>
+            <p className="text-primary-100 mb-6 max-w-2xl mx-auto">Join thousands of nursing students using Clinio AI. 100% free, no login required.</p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition-colors shadow-lg">
-                Start Practicing Now
-              </Link>
-              <Link to="/feed" className="bg-primary-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-primary-400 transition-colors border border-primary-400">
-                Browse Study Guides
-              </Link>
+              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition-colors shadow-lg">Start Practicing Now</Link>
+              <Link to="/feed" className="bg-primary-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-primary-400 transition-colors border border-primary-400">Browse Study Guides</Link>
             </div>
           </div>
         </section>
