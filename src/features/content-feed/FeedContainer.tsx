@@ -55,16 +55,15 @@ export const FeedContainer: React.FC = () => {
           };
         });
 
-        // FILTER OUT Practice Mode and OSCE posts from Clinio Room
         const generalPosts = allPosts
-          .filter(p => 
+          .filter((p: any) => 
             p.topic !== 'Practice Mode' && 
             p.topic !== 'Practice Exam' &&
             p.subCategory !== 'OSCE' &&
             p.subCategory !== 'Clinical Scenario' &&
             p.topic !== 'Clinical Scenario'
           )
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
         setPosts(generalPosts);
       }
