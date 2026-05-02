@@ -44,12 +44,12 @@ export const ScenarioContainer: React.FC = () => {
         });
 
         const scenarioPosts = allPosts
-          .filter(p => 
+          .filter((p: any) => 
             p.subCategory === 'OSCE' || 
             p.subCategory === 'Clinical Scenario' ||
             p.topic === 'Clinical Scenario'
           )
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
         setScenarios(scenarioPosts);
       }
