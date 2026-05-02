@@ -50,25 +50,28 @@ const FIREBASE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/dat
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
+  const [scenarioPosts, setScenarioPosts] = useState<Post[]>([]);
+  const [practicePosts, setPracticePosts] = useState<Post[]>([]);
   const [quizTopics, setQuizTopics] = useState<Topic[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingScenarios, setLoadingScenarios] = useState(true);
+  const [loadingPractice, setLoadingPractice] = useState(true);
   const [loadingTopics, setLoadingTopics] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchLatestPosts();
+    fetchScenarioPosts();
+    fetchPracticePosts();
     fetchQuizTopics();
   }, []);
 
-  const fetchLatestPosts = async () => {
+  const fetchAllPosts = async (): Promise<Post[]> => {
     try {
-      const response = await fetch(
-        `${FIREBASE_URL}/posts?orderBy=createdAt%20desc&pageSize=10`
-      );
+      const response = await fetch(`${FIREBASE_URL}/posts`);
       const data = await response.json();
-
       if (data.documents) {
-        const posts = data.documents.map((doc: any) => {
+        return data.documents.map((doc: any) => {
           const f = doc.fields;
           return {
             id: doc.name.split('/').pop(),
@@ -83,20 +86,44 @@ export const HomePage: React.FC = () => {
             imageUrl: f.imageUrl?.stringValue || '',
           };
         });
-        setLatestPosts(posts);
       }
     } catch (err) {
       console.error('Failed to load posts:', err);
-    } finally {
-      setLoadingPosts(false);
     }
+    return [];
+  };
+
+  const fetchLatestPosts = async () => {
+    const allPosts = await fetchAllPosts();
+    const sorted = allPosts.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+    setLatestPosts(sorted);
+    setLoadingPosts(false);
+  };
+
+  const fetchScenarioPosts = async () => {
+    const allPosts = await fetchAllPosts();
+    const scenarios = allPosts
+      .filter(p => p.subCategory === 'OSCE' || p.subCategory === 'Clinical Scenario' || p.topic === 'Clinical Scenario')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 6);
+    setScenarioPosts(scenarios);
+    setLoadingScenarios(false);
+  };
+
+  const fetchPracticePosts = async () => {
+    const allPosts = await fetchAllPosts();
+    const practice = allPosts
+      .filter(p => p.topic === 'Practice Mode' || p.topic === 'Practice Exam')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 6);
+    setPracticePosts(practice);
+    setLoadingPractice(false);
   };
 
   const fetchQuizTopics = async () => {
     try {
       const response = await fetch(`${FIREBASE_URL}/topics`);
       const data = await response.json();
-
       if (data.documents) {
         const allTopics = data.documents
           .map((doc: any) => {
@@ -143,10 +170,6 @@ export const HomePage: React.FC = () => {
     navigate(`/feed?category=${encodeURIComponent(category)}`);
   };
 
-  const handleSubCategoryClick = (subCategory: string) => {
-    navigate(`/feed?subCategory=${encodeURIComponent(subCategory)}`);
-  };
-
   const handleTopicQuizClick = (topicName: string) => {
     navigate(`/rapid-quiz?topic=${encodeURIComponent(topicName)}`);
   };
@@ -163,8 +186,6 @@ export const HomePage: React.FC = () => {
             <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
               Empowering your nursing journey with trusted resources. Practice questions, study guides, and clinical scenarios — all in one place.
             </p>
-
-            {/* Search Bar */}
             <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-6">
               <div className="flex items-center bg-white rounded-xl shadow-lg overflow-hidden">
                 <input
@@ -179,7 +200,6 @@ export const HomePage: React.FC = () => {
                 </button>
               </div>
             </form>
-
             <div className="flex flex-wrap justify-center gap-3 mt-6">
               <Link to="/rapid-quiz" className="bg-white text-primary-700 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors shadow-md">
                 ⚡ Start Practice Quiz
@@ -223,7 +243,7 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Quick Access Categories - CLICKABLE */}
+        {/* Quick Access Categories */}
         <section>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">Explore by Category</h2>
           <p className="text-gray-500 text-center mb-8">Click to browse posts in each category</p>
@@ -242,7 +262,131 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Latest Posts - 10 Max */}
+        {/* Clinical Scenarios Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">🏥 Clinical Scenarios (OSCE)</h2>
+              <p className="text-gray-500 mt-1">Step-by-step patient case simulations with clinical reasoning</p>
+            </div>
+            <Link to="/scenarios" className="hidden sm:inline-flex items-center gap-1 text-green-600 font-semibold hover:text-green-700">
+              View All Scenarios <span className="text-xl">→</span>
+            </Link>
+          </div>
+
+          {loadingScenarios ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="card p-5 animate-pulse">
+                  <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                  <div className="h-5 bg-gray-200 rounded w-full mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          ) : scenarioPosts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {scenarioPosts.map(post => (
+                <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-green-500">
+                  {post.imageUrl ? (
+                    <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
+                  ) : (
+                    <div className="w-full h-44 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                      <span className="text-4xl">🏥</span>
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium border border-green-100">OSCE</span>
+                      <span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors">{post.title}</h3>
+                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{post.readTime}</span>
+                      <span className="text-green-600 font-medium">Start Scenario →</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <p className="text-4xl mb-3">🏥</p>
+              <p className="text-gray-500 text-lg">Clinical scenarios coming soon!</p>
+            </div>
+          )}
+          {scenarioPosts.length > 0 && (
+            <div className="text-center mt-6 sm:hidden">
+              <Link to="/scenarios" className="btn-primary inline-flex items-center gap-2">View All Scenarios →</Link>
+            </div>
+          )}
+        </section>
+
+        {/* Practice Exams Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📝 Practice Exams</h2>
+              <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
+            </div>
+            <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">
+              View All Practice Exams <span className="text-xl">→</span>
+            </Link>
+          </div>
+
+          {loadingPractice ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="card p-5 animate-pulse">
+                  <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                  <div className="h-5 bg-gray-200 rounded w-full mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          ) : practicePosts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {practicePosts.map(post => (
+                <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-blue-500">
+                  {post.imageUrl ? (
+                    <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
+                  ) : (
+                    <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                      <span className="text-4xl">📝</span>
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium border border-blue-100">Practice Mode</span>
+                      <span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{post.title}</h3>
+                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{post.readTime}</span>
+                      <span className="text-blue-600 font-medium">Start Practice →</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <p className="text-4xl mb-3">📝</p>
+              <p className="text-gray-500 text-lg">Practice exams coming soon!</p>
+            </div>
+          )}
+          {practicePosts.length > 0 && (
+            <div className="text-center mt-6 sm:hidden">
+              <Link to="/feed" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link>
+            </div>
+          )}
+        </section>
+
+        {/* Latest Posts */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -268,7 +412,7 @@ export const HomePage: React.FC = () => {
           ) : latestPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {latestPosts.slice(0, 10).map(post => (
+                {latestPosts.map(post => (
                   <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group">
                     {post.imageUrl ? (
                       <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
@@ -280,14 +424,6 @@ export const HomePage: React.FC = () => {
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>
-                        {post.subCategory && (
-                          <button
-                            onClick={(e) => { e.preventDefault(); handleSubCategoryClick(post.subCategory); }}
-                            className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100 hover:bg-gray-100 cursor-pointer"
-                          >
-                            {post.subCategory}
-                          </button>
-                        )}
                         {post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬</span>}
                       </div>
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
@@ -316,7 +452,7 @@ export const HomePage: React.FC = () => {
           )}
         </section>
 
-        {/* Latest Quiz Topics - 10 Max */}
+        {/* Popular Quiz Topics */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -340,7 +476,7 @@ export const HomePage: React.FC = () => {
           ) : quizTopics.length > 0 ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {quizTopics.slice(0, 10).map(topic => (
+                {quizTopics.map(topic => (
                   <button
                     key={topic.id}
                     onClick={() => handleTopicQuizClick(topic.name)}
