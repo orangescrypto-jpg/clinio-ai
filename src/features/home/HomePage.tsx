@@ -65,9 +65,7 @@ export const HomePage: React.FC = () => {
 
   const fetchAllData = async () => {
     const allPosts = await fetchAllPosts();
-    fetchLatestPosts(allPosts);
-    fetchScenarioPosts(allPosts);
-    fetchPracticePosts(allPosts);
+    processPosts(allPosts);
     fetchQuizTopics();
   };
 
@@ -98,13 +96,22 @@ export const HomePage: React.FC = () => {
     return [];
   };
 
-  const fetchLatestPosts = (allPosts: Post[]) => {
-    const sorted = allPosts.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
-    setLatestPosts(sorted);
+  const processPosts = (allPosts: Post[]) => {
+    // Latest Posts (exclude practice and OSCE)
+    const general = allPosts
+      .filter(p => 
+        p.topic !== 'Practice Mode' && 
+        p.topic !== 'Practice Exam' &&
+        p.subCategory !== 'OSCE' &&
+        p.subCategory !== 'Clinical Scenario' &&
+        p.topic !== 'Clinical Scenario'
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 10);
+    setLatestPosts(general);
     setLoadingPosts(false);
-  };
 
-  const fetchScenarioPosts = (allPosts: Post[]) => {
+    // Clinical Scenarios
     const scenarios = allPosts
       .filter(p => 
         p.subCategory === 'OSCE' || 
@@ -115,9 +122,8 @@ export const HomePage: React.FC = () => {
       .slice(0, 6);
     setScenarioPosts(scenarios);
     setLoadingScenarios(false);
-  };
 
-  const fetchPracticePosts = (allPosts: Post[]) => {
+    // Practice Exams
     const practice = allPosts
       .filter(p => 
         p.topic === 'Practice Mode' || 
@@ -199,25 +205,13 @@ export const HomePage: React.FC = () => {
             </p>
             <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-6">
               <div className="flex items-center bg-white rounded-xl shadow-lg overflow-hidden">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search for topics, questions, or study guides..."
-                  className="flex-1 px-5 py-4 text-gray-900 text-base outline-none border-none"
-                />
-                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-4 font-semibold transition-colors">
-                  🔍 Search
-                </button>
+                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search for topics, questions, or study guides..." className="flex-1 px-5 py-4 text-gray-900 text-base outline-none border-none" />
+                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-4 font-semibold transition-colors">🔍 Search</button>
               </div>
             </form>
             <div className="flex flex-wrap justify-center gap-3 mt-6">
-              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors shadow-md">
-                ⚡ Start Practice Quiz
-              </Link>
-              <Link to="/exam" className="bg-primary-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-400 transition-colors shadow-md border border-primary-400">
-                📝 Take Full Exam
-              </Link>
+              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors shadow-md">⚡ Start Practice Quiz</Link>
+              <Link to="/exam" className="bg-primary-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-400 transition-colors shadow-md border border-primary-400">📝 Take Full Exam</Link>
             </div>
           </div>
         </div>
@@ -239,6 +233,7 @@ export const HomePage: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
         {/* Feature Cards */}
         <section>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">How Clinio AI Works</h2>
@@ -260,11 +255,7 @@ export const HomePage: React.FC = () => {
           <p className="text-gray-500 text-center mb-8">Click to browse posts in each category</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {categoryLinks.map(cat => (
-              <button
-                key={cat.label}
-                onClick={() => handleCategoryClick(cat.category)}
-                className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all group cursor-pointer"
-              >
+              <button key={cat.label} onClick={() => handleCategoryClick(cat.category)} className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all group cursor-pointer">
                 <span className="text-3xl block mb-2">{cat.icon}</span>
                 <p className="text-sm font-semibold text-gray-800 group-hover:text-primary-600">{cat.label}</p>
                 <p className="text-xs text-gray-400 mt-1">{cat.desc}</p>
@@ -273,245 +264,127 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Clinical Scenarios Section */}
+        {/* Clinical Scenarios */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">🏥 Clinical Scenarios (OSCE)</h2>
               <p className="text-gray-500 mt-1">Step-by-step patient case simulations with clinical reasoning</p>
             </div>
-            <Link to="/scenarios" className="hidden sm:inline-flex items-center gap-1 text-green-600 font-semibold hover:text-green-700">
-              View All Scenarios <span className="text-xl">→</span>
-            </Link>
+            <Link to="/scenarios" className="hidden sm:inline-flex items-center gap-1 text-green-600 font-semibold hover:text-green-700">View All Scenarios <span className="text-xl">→</span></Link>
           </div>
           {loadingScenarios ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="card p-5 animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                  <div className="h-5 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
           ) : scenarioPosts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {scenarioPosts.map(post => (
-                <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-green-500">
-                  {post.imageUrl ? (
-                    <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
-                  ) : (
-                    <div className="w-full h-44 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
-                      <span className="text-4xl">🏥</span>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {scenarioPosts.map(post => (
+                  <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-green-500">
+                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center"><span className="text-4xl">🏥</span></div>}
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium border border-green-100">OSCE</span><span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span></div>
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors">{post.title}</h3>
+                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span className="text-green-600 font-medium">Start Scenario →</span></div>
                     </div>
-                  )}
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium border border-green-100">OSCE</span>
-                      <span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors">{post.title}</h3>
-                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>{post.readTime}</span>
-                      <span className="text-green-600 font-medium">Start Scenario →</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </div>
+              <div className="text-center mt-6 sm:hidden"><Link to="/scenarios" className="btn-primary inline-flex items-center gap-2">View All Scenarios →</Link></div>
+            </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <p className="text-4xl mb-3">🏥</p>
-              <p className="text-gray-500 text-lg">Clinical scenarios coming soon!</p>
-            </div>
-          )}
-          {scenarioPosts.length > 0 && (
-            <div className="text-center mt-6 sm:hidden">
-              <Link to="/scenarios" className="btn-primary inline-flex items-center gap-2">View All Scenarios →</Link>
-            </div>
+            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">🏥</p><p className="text-gray-500 text-lg">Clinical scenarios coming soon!</p></div>
           )}
         </section>
 
-        {/* Practice Exams Section */}
+        {/* Practice Exams */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📝 Practice Exams</h2>
               <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
             </div>
-            <Link to="/practice-exams" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">
-              View All Practice Exams <span className="text-xl">→</span>
-            </Link>
+            <Link to="/practice-exams" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">View All Practice Exams <span className="text-xl">→</span></Link>
           </div>
           {loadingPractice ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="card p-5 animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                  <div className="h-5 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
           ) : practicePosts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {practicePosts.map(post => (
-                <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-blue-500">
-                  {post.imageUrl ? (
-                    <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
-                  ) : (
-                    <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                      <span className="text-4xl">📝</span>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {practicePosts.map(post => (
+                  <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-blue-500">
+                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center"><span className="text-4xl">📝</span></div>}
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium border border-blue-100">Practice Mode</span><span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span></div>
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{post.title}</h3>
+                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span className="text-blue-600 font-medium">Start Practice →</span></div>
                     </div>
-                  )}
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium border border-blue-100">Practice Mode</span>
-                      <span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{post.title}</h3>
-                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>{post.readTime}</span>
-                      <span className="text-blue-600 font-medium">Start Practice →</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </div>
+              <div className="text-center mt-6 sm:hidden"><Link to="/practice-exams" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link></div>
+            </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <p className="text-4xl mb-3">📝</p>
-              <p className="text-gray-500 text-lg">Practice exams coming soon!</p>
-            </div>
-          )}
-          {practicePosts.length > 0 && (
-            <div className="text-center mt-6 sm:hidden">
-              <Link to="/practice-exams" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link>
-            </div>
+            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">Practice exams coming soon!</p></div>
           )}
         </section>
 
         {/* Latest Posts */}
         <section>
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📚 Latest Study Guides & Posts</h2>
-              <p className="text-gray-500 mt-1">Expert-written content for nursing and medical students</p>
-            </div>
-            <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">
-              View All Posts <span className="text-xl">→</span>
-            </Link>
+            <div><h2 className="text-2xl md:text-3xl font-bold text-gray-900">📚 Latest Study Guides & Posts</h2><p className="text-gray-500 mt-1">Expert-written content for nursing and medical students</p></div>
+            <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">View All Posts <span className="text-xl">→</span></Link>
           </div>
           {loadingPosts ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="card p-5 animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                  <div className="h-5 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
           ) : latestPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {latestPosts.map(post => (
                   <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group">
-                    {post.imageUrl ? (
-                      <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
-                    ) : (
-                      <div className="w-full h-44 bg-gradient-to-br from-primary-100 to-blue-100 flex items-center justify-center">
-                        <span className="text-4xl">📚</span>
-                      </div>
-                    )}
+                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-primary-100 to-blue-100 flex items-center justify-center"><span className="text-4xl">📚</span></div>}
                     <div className="p-5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>
-                        {post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬</span>}
-                      </div>
+                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>{post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬</span>}</div>
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
                       <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>{post.readTime}</span>
-                        <span>{formatDate(post.createdAt)}</span>
-                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span>{formatDate(post.createdAt)}</span></div>
                     </div>
                   </Link>
                 ))}
               </div>
-              {latestPosts.length > 6 && (
-                <div className="text-center mt-8">
-                  <Link to="/feed" className="btn-primary inline-flex items-center gap-2 px-8 py-3">
-                    View All {latestPosts.length} Posts <span>→</span>
-                  </Link>
-                </div>
-              )}
+              {latestPosts.length > 6 && <div className="text-center mt-8"><Link to="/feed" className="btn-primary inline-flex items-center gap-2 px-8 py-3">View All {latestPosts.length} Posts <span>→</span></Link></div>}
             </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <p className="text-4xl mb-3">📝</p>
-              <p className="text-gray-500 text-lg">No posts yet. Check back soon for study guides!</p>
-            </div>
+            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">No posts yet. Check back soon for study guides!</p></div>
           )}
         </section>
 
         {/* Popular Quiz Topics */}
         <section>
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">⚡ Popular Quiz Topics</h2>
-              <p className="text-gray-500 mt-1">Practice with our most popular question sets</p>
-            </div>
-            <Link to="/rapid-quiz" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">
-              Start a Quiz <span className="text-xl">→</span>
-            </Link>
+            <div><h2 className="text-2xl md:text-3xl font-bold text-gray-900">⚡ Popular Quiz Topics</h2><p className="text-gray-500 mt-1">Practice with our most popular question sets</p></div>
+            <Link to="/rapid-quiz" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">Start a Quiz <span className="text-xl">→</span></Link>
           </div>
           {loadingTopics ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="card p-4 animate-pulse">
-                  <div className="h-3 bg-gray-200 rounded w-16 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">{[1,2,3,4,5].map(i=><div key={i} className="card p-4 animate-pulse"><div className="h-3 bg-gray-200 rounded w-16 mb-2"></div><div className="h-4 bg-gray-200 rounded w-full"></div></div>)}</div>
+          ) : quizTopics.length > 0 ? (
+            <><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {quizTopics.map(topic => (
+                <button key={topic.id} onClick={() => handleTopicQuizClick(topic.name)} className="card p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer border-2 border-transparent hover:border-primary-200">
+                  <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">{topic.questionCount} Questions</span>
+                  <h4 className="font-semibold text-gray-900 mt-2 text-sm">{topic.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
+                </button>
               ))}
             </div>
-          ) : quizTopics.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {quizTopics.map(topic => (
-                  <button
-                    key={topic.id}
-                    onClick={() => handleTopicQuizClick(topic.name)}
-                    className="card p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer border-2 border-transparent hover:border-primary-200"
-                  >
-                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">{topic.questionCount} Questions</span>
-                    <h4 className="font-semibold text-gray-900 mt-2 text-sm">{topic.name}</h4>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
-                  </button>
-                ))}
-              </div>
-              {quizTopics.length > 5 && (
-                <div className="text-center mt-8">
-                  <Link to="/rapid-quiz" className="btn-primary inline-flex items-center gap-2 px-8 py-3">
-                    Explore All Quiz Topics <span>→</span>
-                  </Link>
-                </div>
-              )}
-            </>
+            {quizTopics.length > 5 && <div className="text-center mt-8"><Link to="/rapid-quiz" className="btn-primary inline-flex items-center gap-2 px-8 py-3">Explore All Quiz Topics <span>→</span></Link></div>}</>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <p className="text-4xl mb-3">📝</p>
-              <p className="text-gray-500 text-lg">Quiz topics coming soon!</p>
-            </div>
+            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">Quiz topics coming soon!</p></div>
           )}
         </section>
 
-        {/* CTA Banner */}
+        {/* CTA */}
         <section>
           <div className="bg-gradient-to-r from-primary-600 to-blue-700 rounded-2xl p-8 md:p-12 text-white text-center">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Ace Your Nursing Exams?</h2>
