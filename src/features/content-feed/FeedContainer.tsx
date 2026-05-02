@@ -19,10 +19,11 @@ interface Post {
   createdAt: string;
 }
 
+const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
+
 export const FeedContainer: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchPosts();
@@ -30,41 +31,59 @@ export const FeedContainer: React.FC = () => {
 
   const fetchPosts = async () => {
     try {
-      // Fetch from Firestore REST API
-      const response = await fetch(
-        `https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents/posts?orderBy=createdAt desc`
-      );
+      const response = await fetch(`${FIRESTORE_URL}/posts`);
       const data = await response.json();
-      
       if (data.documents) {
-        const fetchedPosts = data.documents.map((doc: any) => {
-          const fields = doc.fields;
+        const allPosts = data.documents.map((doc: any) => {
+          const f = doc.fields;
           return {
             id: doc.name.split('/').pop(),
-            title: fields.title?.stringValue || '',
-            preview: fields.preview?.stringValue || '',
-            content: fields.content?.stringValue || '',
-            imageUrl: fields.imageUrl?.stringValue || '',
-            topic: fields.topic?.stringValue || '',
-            category: fields.category?.stringValue || '',
-            subCategory: fields.subCategory?.stringValue || '',
-            author: fields.author?.stringValue || 'Clinio AI',
-            readTime: fields.readTime?.stringValue || '',
-            hasVideo: fields.hasVideo?.booleanValue || false,
-            videoUrl: fields.videoUrl?.stringValue || '',
-            likes: fields.likes?.integerValue || 0,
-            comments: fields.comments?.integerValue || 0,
-            createdAt: fields.createdAt?.stringValue || '',
+            title: f.title?.stringValue || '',
+            preview: f.preview?.stringValue || '',
+            content: f.content?.stringValue || '',
+            imageUrl: f.imageUrl?.stringValue || '',
+            topic: f.topic?.stringValue || '',
+            category: f.category?.stringValue || '',
+            subCategory: f.subCategory?.stringValue || '',
+            author: f.author?.stringValue || 'Clinio AI',
+            readTime: f.readTime?.stringValue || '',
+            hasVideo: f.hasVideo?.booleanValue || false,
+            videoUrl: f.videoUrl?.stringValue || '',
+            likes: f.likes?.integerValue || 0,
+            comments: f.comments?.integerValue || 0,
+            createdAt: f.createdAt?.stringValue || '',
           };
         });
-        setPosts(fetchedPosts);
+
+        // FILTER OUT Practice Mode and OSCE posts from Clinio Room
+        const generalPosts = allPosts
+          .filter(p => 
+            p.topic !== 'Practice Mode' && 
+            p.topic !== 'Practice Exam' &&
+            p.subCategory !== 'OSCE' &&
+            p.subCategory !== 'Clinical Scenario' &&
+            p.topic !== 'Clinical Scenario'
+          )
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+        setPosts(generalPosts);
       }
     } catch (err) {
-      setError('Failed to load posts. Make sure Firestore rules allow public access.');
-      console.error(err);
+      console.error('Failed to load posts:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return `${diff} days ago`;
+    return dateStr;
   };
 
   if (loading) {
@@ -72,14 +91,6 @@ export const FeedContainer: React.FC = () => {
       <div className="max-w-3xl mx-auto text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
         <p className="text-gray-500 mt-4">Loading posts...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-3xl mx-auto text-center py-12">
-        <p className="text-red-500">{error}</p>
       </div>
     );
   }
@@ -105,13 +116,13 @@ export const FeedContainer: React.FC = () => {
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{post.category}</span>
                 {post.hasVideo && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">🎬 Video</span>}
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
-              <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
               {post.imageUrl && (
                 <img src={post.imageUrl} alt={post.title} className="w-full h-40 object-cover rounded-lg mb-3" />
               )}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
+              <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
               <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{post.readTime}</span>
+                <span>{post.readTime} · {formatDate(post.createdAt)}</span>
                 <div className="flex items-center gap-3">
                   <span>❤️ {post.likes}</span>
                   <span>💬 {post.comments}</span>
