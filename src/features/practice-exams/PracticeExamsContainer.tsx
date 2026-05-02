@@ -46,14 +46,13 @@ export const PracticeExamsContainer: React.FC = () => {
         });
 
         const practicePosts = allPosts
-          .filter(p => 
+          .filter((p: any) => 
             p.topic === 'Practice Mode' || 
             p.topic === 'Practice Exam' ||
             p.subCategory === 'Practice Mode' ||
-            p.title?.toLowerCase().includes('practice exam') ||
-            p.title?.toLowerCase().includes('practice mode')
+            (p.title && (p.title.toLowerCase().includes('practice exam') || p.title.toLowerCase().includes('practice mode')))
           )
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
         setPosts(practicePosts);
       }
