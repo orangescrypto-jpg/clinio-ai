@@ -7,10 +7,19 @@ interface Post {
   preview: string;
   topic: string;
   category: string;
+  subCategory: string;
   readTime: string;
   createdAt: string;
   hasVideo: boolean;
   imageUrl: string;
+}
+
+interface Topic {
+  id: string;
+  subCategoryId: string;
+  name: string;
+  description: string;
+  questionCount: number;
 }
 
 const features = [
@@ -28,28 +37,33 @@ const stats = [
 ];
 
 const categoryLinks = [
-  { icon: '🏥', label: 'Clinical Medicine', desc: 'Core clinical knowledge', link: '/rapid-quiz' },
-  { icon: '🩺', label: 'NCLEX Practice', desc: 'US/Canada exam prep', link: '/exam' },
-  { icon: '🇳🇬', label: 'NMCN Exam Prep', desc: 'Nigeria council exam', link: '/exam' },
-  { icon: '📋', label: 'Nursing Care Plans', desc: 'Comprehensive guides', link: '/feed' },
-  { icon: '💊', label: 'Pharmacology', desc: 'Drug study guides', link: '/feed' },
-  { icon: '🧠', label: 'Study Guides', desc: 'Nursing fundamentals', link: '/feed' },
+  { icon: '🏥', label: 'Clinical Medicine', desc: 'Core clinical knowledge', category: 'Clinical Medicine' },
+  { icon: '🩺', label: 'NCLEX Practice', desc: 'US/Canada exam prep', category: 'NCLEX' },
+  { icon: '🇳🇬', label: 'NMCN Exam Prep', desc: 'Nigeria council exam', category: 'NMCN' },
+  { icon: '📋', label: 'Nursing Care Plans', desc: 'Comprehensive guides', category: 'Clinical Medicine' },
+  { icon: '💊', label: 'Pharmacology', desc: 'Drug study guides', category: 'NCLEX' },
+  { icon: '🧠', label: 'Study Guides', desc: 'Nursing fundamentals', category: 'NMCN' },
 ];
+
+const FIREBASE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [quizTopics, setQuizTopics] = useState<Topic[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingTopics, setLoadingTopics] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchLatestPosts();
+    fetchQuizTopics();
   }, []);
 
   const fetchLatestPosts = async () => {
     try {
       const response = await fetch(
-        'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents/posts?orderBy=createdAt%20desc&pageSize=6'
+        `${FIREBASE_URL}/posts?orderBy=createdAt%20desc&pageSize=10`
       );
       const data = await response.json();
 
@@ -62,6 +76,7 @@ export const HomePage: React.FC = () => {
             preview: f.preview?.stringValue || '',
             topic: f.topic?.stringValue || '',
             category: f.category?.stringValue || '',
+            subCategory: f.subCategory?.stringValue || '',
             readTime: f.readTime?.stringValue || '',
             createdAt: f.createdAt?.stringValue || '',
             hasVideo: f.hasVideo?.booleanValue || false,
@@ -73,7 +88,36 @@ export const HomePage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load posts:', err);
     } finally {
-      setLoading(false);
+      setLoadingPosts(false);
+    }
+  };
+
+  const fetchQuizTopics = async () => {
+    try {
+      const response = await fetch(`${FIREBASE_URL}/topics`);
+      const data = await response.json();
+
+      if (data.documents) {
+        const allTopics = data.documents
+          .map((doc: any) => {
+            const f = doc.fields;
+            return {
+              id: doc.name.split('/').pop(),
+              subCategoryId: f.subCategoryId?.stringValue || '',
+              name: f.name?.stringValue || '',
+              description: f.description?.stringValue || '',
+              questionCount: f.questionCount?.integerValue || f.questionCount?.stringValue || 0,
+            };
+          })
+          .filter((t: Topic) => t.questionCount > 0)
+          .sort((a: Topic, b: Topic) => b.questionCount - a.questionCount)
+          .slice(0, 10);
+        setQuizTopics(allTopics);
+      }
+    } catch (err) {
+      console.error('Failed to load topics:', err);
+    } finally {
+      setLoadingTopics(false);
     }
   };
 
@@ -93,6 +137,18 @@ export const HomePage: React.FC = () => {
     if (searchQuery.trim()) {
       navigate(`/feed?search=${encodeURIComponent(searchQuery.trim())}`);
     }
+  };
+
+  const handleCategoryClick = (category: string) => {
+    navigate(`/feed?category=${encodeURIComponent(category)}`);
+  };
+
+  const handleSubCategoryClick = (subCategory: string) => {
+    navigate(`/feed?subCategory=${encodeURIComponent(subCategory)}`);
+  };
+
+  const handleTopicQuizClick = (topicName: string) => {
+    navigate(`/rapid-quiz?topic=${encodeURIComponent(topicName)}`);
   };
 
   return (
@@ -167,26 +223,26 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Quick Access Categories */}
+        {/* Quick Access Categories - CLICKABLE */}
         <section>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">Explore by Category</h2>
-          <p className="text-gray-500 text-center mb-8">Find exactly what you need to study</p>
+          <p className="text-gray-500 text-center mb-8">Click to browse posts in each category</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {categoryLinks.map(cat => (
-              <Link
+              <button
                 key={cat.label}
-                to={cat.link}
-                className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all group"
+                onClick={() => handleCategoryClick(cat.category)}
+                className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all group cursor-pointer"
               >
                 <span className="text-3xl block mb-2">{cat.icon}</span>
                 <p className="text-sm font-semibold text-gray-800 group-hover:text-primary-600">{cat.label}</p>
                 <p className="text-xs text-gray-400 mt-1">{cat.desc}</p>
-              </Link>
+              </button>
             ))}
           </div>
         </section>
 
-        {/* Latest Posts */}
+        {/* Latest Posts - 10 Max */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -198,7 +254,7 @@ export const HomePage: React.FC = () => {
             </Link>
           </div>
 
-          {loading ? (
+          {loadingPosts ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
                 <div key={i} className="card p-5 animate-pulse">
@@ -212,7 +268,7 @@ export const HomePage: React.FC = () => {
           ) : latestPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {latestPosts.map(post => (
+                {latestPosts.slice(0, 10).map(post => (
                   <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group">
                     {post.imageUrl ? (
                       <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
@@ -224,7 +280,15 @@ export const HomePage: React.FC = () => {
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>
-                        {post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬 Video</span>}
+                        {post.subCategory && (
+                          <button
+                            onClick={(e) => { e.preventDefault(); handleSubCategoryClick(post.subCategory); }}
+                            className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100 hover:bg-gray-100 cursor-pointer"
+                          >
+                            {post.subCategory}
+                          </button>
+                        )}
+                        {post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬</span>}
                       </div>
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
                       <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
@@ -236,16 +300,72 @@ export const HomePage: React.FC = () => {
                   </Link>
                 ))}
               </div>
-              <div className="text-center mt-8 sm:hidden">
-                <Link to="/feed" className="btn-primary inline-flex items-center gap-1">
-                  View All Posts <span>→</span>
-                </Link>
-              </div>
+              {latestPosts.length > 6 && (
+                <div className="text-center mt-8">
+                  <Link to="/feed" className="btn-primary inline-flex items-center gap-2 px-8 py-3">
+                    View All {latestPosts.length} Posts <span>→</span>
+                  </Link>
+                </div>
+              )}
             </>
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <p className="text-4xl mb-3">📝</p>
               <p className="text-gray-500 text-lg">No posts yet. Check back soon for study guides!</p>
+            </div>
+          )}
+        </section>
+
+        {/* Latest Quiz Topics - 10 Max */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Popular Quiz Topics</h2>
+              <p className="text-gray-500 mt-1">Practice with our most popular question sets</p>
+            </div>
+            <Link to="/rapid-quiz" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">
+              Start a Quiz <span className="text-xl">→</span>
+            </Link>
+          </div>
+
+          {loadingTopics ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="card p-4 animate-pulse">
+                  <div className="h-3 bg-gray-200 rounded w-16 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              ))}
+            </div>
+          ) : quizTopics.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {quizTopics.slice(0, 10).map(topic => (
+                  <button
+                    key={topic.id}
+                    onClick={() => handleTopicQuizClick(topic.name)}
+                    className="card p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer border-2 border-transparent hover:border-primary-200"
+                  >
+                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">
+                      {topic.questionCount} Questions
+                    </span>
+                    <h4 className="font-semibold text-gray-900 mt-2 text-sm">{topic.name}</h4>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
+                  </button>
+                ))}
+              </div>
+              {quizTopics.length > 5 && (
+                <div className="text-center mt-8">
+                  <Link to="/rapid-quiz" className="btn-primary inline-flex items-center gap-2 px-8 py-3">
+                    Explore All Quiz Topics <span>→</span>
+                  </Link>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <p className="text-4xl mb-3">📝</p>
+              <p className="text-gray-500 text-lg">Quiz topics coming soon!</p>
             </div>
           )}
         </section>
