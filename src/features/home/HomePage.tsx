@@ -331,7 +331,7 @@ export const HomePage: React.FC = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📝 Practice Exams</h2>
               <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
             </div>
-            <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">
+            <Link to="/practice-exams" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">
               View All Practice Exams <span className="text-xl">→</span>
             </Link>
           </div>
@@ -381,7 +381,7 @@ export const HomePage: React.FC = () => {
           )}
           {practicePosts.length > 0 && (
             <div className="text-center mt-6 sm:hidden">
-              <Link to="/feed" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link>
+              <Link to="/practice-exams" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link>
             </div>
           )}
         </section>
@@ -390,7 +390,7 @@ export const HomePage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Latest Study Guides & Posts</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📚 Latest Study Guides & Posts</h2>
               <p className="text-gray-500 mt-1">Expert-written content for nursing and medical students</p>
             </div>
             <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">
@@ -456,7 +456,7 @@ export const HomePage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Popular Quiz Topics</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">⚡ Popular Quiz Topics</h2>
               <p className="text-gray-500 mt-1">Practice with our most popular question sets</p>
             </div>
             <Link to="/rapid-quiz" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">
