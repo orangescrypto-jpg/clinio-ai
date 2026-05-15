@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 interface Post {
   id: string;
@@ -22,21 +22,28 @@ interface Post {
 const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const FeedContainer: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Read search + category from URL params
+  const searchQuery = searchParams.get('search') || '';
+  const categoryFilter = searchParams.get('category') || '';
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
   const fetchPosts = async () => {
+    setError('');
+    setLoading(true);
     try {
       const response = await fetch(`${FIRESTORE_URL}/posts`);
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       if (data.documents) {
-        const allPosts: Post[] = data.documents.map((doc: any) => {
+        const mapped: Post[] = data.documents.map((doc: any) => {
           const f = doc.fields;
           return {
             id: doc.name.split('/').pop() as string,
@@ -57,7 +64,8 @@ export const FeedContainer: React.FC = () => {
           };
         });
 
-        const generalPosts = allPosts
+        // Exclude scenario/practice posts (those belong to other sections)
+        const generalPosts = mapped
           .filter(
             (p) =>
               p.topic !== 'Practice Mode' &&
@@ -68,7 +76,7 @@ export const FeedContainer: React.FC = () => {
           )
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-        setPosts(generalPosts);
+        setAllPosts(generalPosts);
       }
     } catch (err) {
       console.error('Failed to load posts:', err);
@@ -77,6 +85,35 @@ export const FeedContainer: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Apply search + category filters client-side (no extra network calls)
+  const filteredPosts = useMemo(() => {
+    let result = allPosts;
+
+    if (categoryFilter) {
+      result = result.filter(
+        (p) =>
+          p.category.toLowerCase() === categoryFilter.toLowerCase() ||
+          p.topic.toLowerCase() === categoryFilter.toLowerCase(),
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.preview.toLowerCase().includes(q) ||
+          p.topic.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.subCategory.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [allPosts, searchQuery, categoryFilter]);
+
+  const clearFilters = () => setSearchParams({});
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -88,6 +125,8 @@ export const FeedContainer: React.FC = () => {
     if (diff < 7) return `${diff} days ago`;
     return dateStr;
   };
+
+  const isFiltered = !!searchQuery || !!categoryFilter;
 
   if (loading) {
     return (
@@ -105,7 +144,7 @@ export const FeedContainer: React.FC = () => {
           <span className="text-3xl">⚠️</span>
           <p className="font-medium">{error}</p>
           <button
-            onClick={() => { setError(''); setLoading(true); fetchPosts(); }}
+            onClick={fetchPosts}
             className="mt-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors"
           >
             Try again
@@ -117,25 +156,67 @@ export const FeedContainer: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">📚 Clinio Room</h2>
         <p className="text-gray-500 mt-1">Educational content for nursing and medical students</p>
       </div>
 
-      {posts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-4xl mb-4">📝</p>
-          <p className="text-gray-500">No posts yet. Check back soon!</p>
+      {/* Active filter pills */}
+      {isFiltered && (
+        <div className="flex flex-wrap items-center gap-2">
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 bg-primary-50 text-primary-700 border border-primary-200 px-3 py-1 rounded-full text-sm font-medium">
+              🔍 "{searchQuery}"
+            </span>
+          )}
+          {categoryFilter && (
+            <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-sm font-medium">
+              📂 {categoryFilter}
+            </span>
+          )}
+          <button
+            onClick={clearFilters}
+            className="text-xs text-gray-500 underline hover:text-gray-700 transition-colors"
+          >
+            Clear filters
+          </button>
+          <span className="text-xs text-gray-400">
+            {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Posts list */}
+      {filteredPosts.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <p className="text-4xl mb-4">{isFiltered ? '🔍' : '📝'}</p>
+          <p className="text-gray-700 font-semibold mb-1">
+            {isFiltered ? 'No posts match your search' : 'No posts yet'}
+          </p>
+          <p className="text-gray-400 text-sm mb-4">
+            {isFiltered
+              ? 'Try different keywords or browse all posts'
+              : 'Check back soon — new content is added regularly'}
+          </p>
+          {isFiltered && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors text-sm"
+            >
+              Browse All Posts
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
             <Link
               key={post.id}
               to={`/feed/${post.id}`}
               className="card p-5 block hover:shadow-md transition-all group"
             >
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
                   {post.topic}
                 </span>
@@ -153,6 +234,7 @@ export const FeedContainer: React.FC = () => {
                   src={post.imageUrl}
                   alt={post.title}
                   className="w-full h-40 object-cover rounded-lg mb-3"
+                  loading="lazy"
                 />
               )}
               <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors">
@@ -160,9 +242,7 @@ export const FeedContainer: React.FC = () => {
               </h3>
               <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
               <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>
-                  {post.readTime} · {formatDate(post.createdAt)}
-                </span>
+                <span>{post.readTime} · {formatDate(post.createdAt)}</span>
                 <div className="flex items-center gap-3">
                   <span>❤️ {post.likes}</span>
                   <span>💬 {post.comments}</span>
