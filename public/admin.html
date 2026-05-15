@@ -10,7 +10,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f0f2f5; padding: 20px; }
-    .container { max-width: 900px; margin: 0 auto; }
+    .container { max-width: 960px; margin: 0 auto; }
     h1 { color: #2563eb; margin-bottom: 8px; font-size: 28px; }
     .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
     .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
@@ -29,6 +29,8 @@
     button.danger:hover { background: #dc2626; }
     button.warning { background: #f59e0b; color: white; }
     button.warning:hover { background: #d97706; }
+    button.success { background: #10b981; color: white; }
+    button.success:hover { background: #059669; }
     button.small { padding: 6px 12px; font-size: 12px; }
     .msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; font-weight: 500; }
     .msg.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
@@ -42,16 +44,41 @@
     .post-info { flex: 1; }
     .post-info strong { display: block; margin-bottom: 4px; }
     .post-info small { color: #6b7280; }
-    .post-actions { display: flex; gap: 6px; }
+    .post-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-right: 4px; }
     .badge.blue { background: #dbeafe; color: #1e40af; }
     .badge.green { background: #d1fae5; color: #065f46; }
     .badge.purple { background: #ede9fe; color: #5b21b6; }
     .badge.orange { background: #fff7ed; color: #9a3412; }
+    .badge.teal { background: #ccfbf1; color: #065f46; }
     .section-divider { border-top: 1px solid #e5e7eb; margin: 16px 0; padding-top: 16px; }
     .help-text { font-size: 11px; color: #9ca3af; margin-top: -10px; margin-bottom: 12px; }
-    #logoutBtn { position: absolute; top: 20px; right: 20px; background: #ef4444; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; font-weight: 600; }
+    #logoutBtn { position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; font-weight: 600; z-index: 100; }
     #logoutBtn:hover { background: #dc2626; }
+
+    /* Tab navigation */
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid #e5e7eb; margin-bottom: 24px; }
+    .tab-btn { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; border-radius: 6px 6px 0 0; }
+    .tab-btn:hover { color: #2563eb; background: #f0f2f5; }
+    .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; background: white; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Quiz-specific */
+    .choice-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .choice-row input[type="text"] { flex: 1; margin-bottom: 0; }
+    .choice-row input[type="radio"] { width: auto; margin: 0; flex-shrink: 0; cursor: pointer; }
+    .choice-label { font-size: 12px; color: #374151; font-weight: 700; width: 20px; flex-shrink: 0; }
+    .choice-correct-label { font-size: 11px; color: #059669; font-weight: 600; width: 60px; flex-shrink: 0; text-align: center; }
+    .q-item { padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; }
+    .q-item:hover { border-color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .q-stem { font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
+    .q-meta { display: flex; justify-content: space-between; align-items: center; }
+    .q-choices { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .add-choice-btn { background: #f3f4f6; color: #374151; border: 1.5px dashed #d1d5db; padding: 8px 14px; font-size: 13px; width: 100%; margin-bottom: 14px; }
+    .add-choice-btn:hover { background: #e5e7eb; }
+    .remove-choice-btn { background: #fee2e2; color: #991b1b; border: none; padding: 6px 10px; font-size: 12px; border-radius: 6px; flex-shrink: 0; }
+    .remove-choice-btn:hover { background: #fecaca; }
   </style>
 </head>
 <body>
@@ -60,105 +87,200 @@
 
   <div class="container">
     <h1>🛠️ Clinio AI Admin</h1>
-    <p class="subtitle">Create, edit, and manage educational posts. Posts appear instantly on the website.</p>
-    <p class="subtitle" style="color:#2563eb;" id="userEmail"></p>
+    <p class="subtitle" id="userEmail"></p>
     <div id="msg"></div>
-    
-    <!-- Form Card -->
-    <div class="card">
-      <h2 id="formTitle">📝 Create New Post</h2>
-      <form id="postForm">
-        <input type="hidden" id="postId">
-        <input type="hidden" id="originalCreatedAt">
-        
-        <label>📌 Title *</label>
-        <input type="text" id="title" placeholder="e.g., Understanding Heart Failure Management" required>
-        
-        <label>📝 Preview (short summary shown on cards) *</label>
-        <textarea id="preview" rows="2" placeholder="A brief summary that entices readers to click..." required></textarea>
-        
-        <label>📄 Full Content (HTML supported) *</label>
-        <textarea id="content" rows="10" placeholder="<h2>Introduction</h2><p>Write your full article here...</p>" required></textarea>
-        
-        <label>🖼️ Image URL <small>(<a href="https://imgbb.com" target="_blank">Upload to imgbb.com</a>, paste direct link)</small></label>
-        <input type="url" id="imageUrl" placeholder="https://i.ibb.co/your-image.jpg">
-        <img id="imagePreview" class="preview" style="display:none;">
-        
-        <div class="section-divider"></div>
-        
-        <div class="grid-3">
-          <div>
-            <label>📂 Category</label>
-            <select id="category">
-              <option value="Clinical Medicine">Clinical Medicine</option>
-              <option value="NCLEX">NCLEX</option>
-              <option value="NMCN">NMCN</option>
-            </select>
-          </div>
-          <div>
-            <label>🏷️ Topic</label>
-            <input type="text" id="topic" value="Cardiovascular" placeholder="e.g., Cardiovascular">
-          </div>
-          <div>
-            <label>🔬 SubCategory</label>
-            <input type="text" id="subCategory" value="Cardiology" placeholder="e.g., Cardiology">
-          </div>
-        </div>
-        
-        <div class="grid">
-          <div>
-            <label>⏱️ Read Time</label>
-            <input type="text" id="readTime" value="5 min read" placeholder="e.g., 5 min read">
-          </div>
-          <div>
-            <label>📝 Related Quiz Topic <small>(links "Try Related Quiz" button)</small></label>
-            <select id="relatedQuiz">
-              <option value="">-- None --</option>
-              <option value="Cardiovascular">Cardiovascular</option>
-              <option value="Respiratory">Respiratory</option>
-              <option value="Neurology">Neurology</option>
-              <option value="Endocrine">Endocrine</option>
-              <option value="Gastrointestinal">Gastrointestinal</option>
-              <option value="Renal/Urinary">Renal/Urinary</option>
-              <option value="Hematology">Hematology</option>
-              <option value="Infectious Diseases">Infectious Diseases</option>
-              <option value="Musculoskeletal">Musculoskeletal</option>
-              <option value="Fundamentals of Nursing">Fundamentals of Nursing</option>
-              <option value="Medical-Surgical Nursing">Medical-Surgical Nursing</option>
-              <option value="Maternal & Newborn">Maternal & Newborn</option>
-              <option value="Pediatric Nursing">Pediatric Nursing</option>
-              <option value="Mental Health Nursing">Mental Health Nursing</option>
-              <option value="Pharmacology">Pharmacology</option>
-              <option value="Leadership & Management">Leadership & Management</option>
-              <option value="Safety & Infection Control">Safety & Infection Control</option>
-              <option value="Community Health">Community Health</option>
-              <option value="Midwifery">Midwifery</option>
-              <option value="Nursing Ethics & Law">Nursing Ethics & Law</option>
-              <option value="Public Health Nursing">Public Health Nursing</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="section-divider"></div>
-        
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="hasVideo" style="width: auto; margin: 0;">
-          <span>🎬 Has YouTube Video</span>
-        </label>
-        <input type="url" id="videoUrl" placeholder="https://www.youtube.com/embed/VIDEO_ID" style="display:none;">
-        
-        <div style="display: flex; gap: 10px; margin-top: 16px;">
-          <button type="submit" id="submitBtn" class="primary" style="flex: 1;">🚀 Publish Post</button>
-          <button type="button" id="cancelBtn" class="secondary" style="display:none;">Cancel</button>
-        </div>
-      </form>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('posts')">📝 Posts</button>
+      <button class="tab-btn" onclick="switchTab('quiz')">🧠 Quiz Questions</button>
     </div>
 
-    <!-- Posts List -->
-    <div class="card">
-      <h2>📋 All Posts (<span id="postCount">0</span>)</h2>
-      <div id="postsList">
-        <p style="color: #9ca3af; text-align: center; padding: 20px;">Loading posts...</p>
+    <!-- ═══════════════════════════════════════
+         POSTS TAB
+    ═══════════════════════════════════════ -->
+    <div id="tab-posts" class="tab-panel active">
+      <p class="subtitle">Create, edit, and manage educational posts. Posts appear instantly on the website.</p>
+
+      <!-- Post Form -->
+      <div class="card">
+        <h2 id="formTitle">📝 Create New Post</h2>
+        <form id="postForm">
+          <input type="hidden" id="postId">
+          <input type="hidden" id="originalCreatedAt">
+
+          <label>📌 Title *</label>
+          <input type="text" id="title" placeholder="e.g., Understanding Heart Failure Management" required>
+
+          <label>📝 Preview (short summary shown on cards) *</label>
+          <textarea id="preview" rows="2" placeholder="A brief summary that entices readers to click..." required></textarea>
+
+          <label>📄 Full Content (HTML supported) *</label>
+          <textarea id="content" rows="10" placeholder="<h2>Introduction</h2><p>Write your full article here...</p>" required></textarea>
+
+          <label>🖼️ Image URL <small>(<a href="https://imgbb.com" target="_blank">Upload to imgbb.com</a>, paste direct link)</small></label>
+          <input type="url" id="imageUrl" placeholder="https://i.ibb.co/your-image.jpg">
+          <img id="imagePreview" class="preview" style="display:none;">
+
+          <div class="section-divider"></div>
+
+          <div class="grid-3">
+            <div>
+              <label>📂 Category</label>
+              <select id="category">
+                <option value="Clinical Medicine">Clinical Medicine</option>
+                <option value="NCLEX">NCLEX</option>
+                <option value="NMCN">NMCN</option>
+              </select>
+            </div>
+            <div>
+              <label>🏷️ Topic</label>
+              <input type="text" id="topic" value="Cardiovascular" placeholder="e.g., Cardiovascular">
+            </div>
+            <div>
+              <label>🔬 SubCategory</label>
+              <input type="text" id="subCategory" value="Cardiology" placeholder="e.g., Cardiology">
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>⏱️ Read Time</label>
+              <input type="text" id="readTime" value="5 min read" placeholder="e.g., 5 min read">
+            </div>
+            <div>
+              <label>📝 Related Quiz Topic <small>(links "Try Related Quiz" button)</small></label>
+              <select id="relatedQuiz">
+                <option value="">-- None --</option>
+                <option value="Cardiovascular">Cardiovascular</option>
+                <option value="Respiratory">Respiratory</option>
+                <option value="Neurology">Neurology</option>
+                <option value="Endocrine">Endocrine</option>
+                <option value="Gastrointestinal">Gastrointestinal</option>
+                <option value="Renal/Urinary">Renal/Urinary</option>
+                <option value="Hematology">Hematology</option>
+                <option value="Infectious Diseases">Infectious Diseases</option>
+                <option value="Musculoskeletal">Musculoskeletal</option>
+                <option value="Fundamentals of Nursing">Fundamentals of Nursing</option>
+                <option value="Medical-Surgical Nursing">Medical-Surgical Nursing</option>
+                <option value="Maternal & Newborn">Maternal & Newborn</option>
+                <option value="Pediatric Nursing">Pediatric Nursing</option>
+                <option value="Mental Health Nursing">Mental Health Nursing</option>
+                <option value="Pharmacology">Pharmacology</option>
+                <option value="Leadership & Management">Leadership & Management</option>
+                <option value="Safety & Infection Control">Safety & Infection Control</option>
+                <option value="Community Health">Community Health</option>
+                <option value="Midwifery">Midwifery</option>
+                <option value="Nursing Ethics & Law">Nursing Ethics & Law</option>
+                <option value="Public Health Nursing">Public Health Nursing</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="hasVideo" style="width: auto; margin: 0;">
+            <span>🎬 Has YouTube Video</span>
+          </label>
+          <input type="url" id="videoUrl" placeholder="https://www.youtube.com/embed/VIDEO_ID" style="display:none;">
+
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button type="submit" id="submitBtn" class="primary" style="flex: 1;">🚀 Publish Post</button>
+            <button type="button" id="cancelBtn" class="secondary" style="display:none;">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Posts List -->
+      <div class="card">
+        <h2>📋 All Posts (<span id="postCount">0</span>)</h2>
+        <div id="postsList">
+          <p style="color: #9ca3af; text-align: center; padding: 20px;">Loading posts...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         QUIZ TAB
+    ═══════════════════════════════════════ -->
+    <div id="tab-quiz" class="tab-panel">
+      <p class="subtitle">Add and manage quiz questions. Questions are linked to topics and serve all quiz/exam modes.</p>
+
+      <!-- Topic Loader -->
+      <div class="card">
+        <h2>🔗 Select Topic</h2>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:14px;">Questions must belong to a topic. Pick the category → system → topic first.</p>
+        <div class="grid-3">
+          <div>
+            <label>Category</label>
+            <select id="q-category" onchange="loadQSubCategories()">
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+          <div>
+            <label>System / Sub-Category</label>
+            <select id="q-subcategory" onchange="loadQTopics()">
+              <option value="">-- Select Category First --</option>
+            </select>
+          </div>
+          <div>
+            <label>Topic</label>
+            <select id="q-topic" onchange="onTopicSelected()">
+              <option value="">-- Select System First --</option>
+            </select>
+          </div>
+        </div>
+        <div id="q-topic-info" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:13px;color:#065f46;"></div>
+      </div>
+
+      <!-- Question Form -->
+      <div class="card" id="q-form-card" style="display:none;">
+        <h2 id="q-formTitle">➕ Add New Question</h2>
+
+        <label>📋 Question Stem *</label>
+        <textarea id="q-stem" rows="3" placeholder="A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most appropriate initial action?"></textarea>
+
+        <div class="section-divider"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <label style="margin:0;">Answer Choices * <small style="font-weight:400;color:#9ca3af;">(select the radio button next to the correct answer)</small></label>
+        </div>
+        <div id="choices-container"></div>
+        <button type="button" class="add-choice-btn" onclick="addChoice()">＋ Add Another Choice</button>
+
+        <div class="section-divider"></div>
+
+        <label>💡 Explanation *</label>
+        <textarea id="q-explanation" rows="3" placeholder="Explain why the correct answer is correct, and briefly why the others are wrong..."></textarea>
+
+        <div class="grid">
+          <div>
+            <label>📊 Difficulty</label>
+            <select id="q-difficulty">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div>
+            <label>🏷️ Tags <small style="font-weight:400;">(comma-separated, optional)</small></label>
+            <input type="text" id="q-tags" placeholder="e.g., cardiology, NCLEX, priority">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button type="button" id="q-submitBtn" class="success" style="flex:1;" onclick="saveQuestion()">✅ Save Question</button>
+          <button type="button" id="q-cancelBtn" class="secondary" style="display:none;" onclick="resetQuestionForm()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Questions List -->
+      <div class="card" id="q-list-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h2 style="margin:0;">🗂️ Questions in this Topic (<span id="q-count">0</span>)</h2>
+        </div>
+        <div id="questionsList"></div>
       </div>
     </div>
   </div>
@@ -176,36 +298,48 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    let editingId = null;
 
-    // Check authentication
+    // ─── AUTH ────────────────────────────────────────────────────────────────
     auth.onAuthStateChanged((user) => {
       if (!user) {
         window.location.href = '/admin-login.html';
       } else {
         document.getElementById('userEmail').textContent = '👤 Logged in as: ' + user.email;
         loadPosts();
+        loadQCategories();
       }
     });
 
     function logout() {
-      auth.signOut().then(() => {
-        window.location.href = '/admin-login.html';
-      });
+      auth.signOut().then(() => { window.location.href = '/admin-login.html'; });
     }
 
+    // ─── TABS ─────────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ─── MESSAGES ────────────────────────────────────────────────────────────
     function showMsg(text, type) {
       const msg = document.getElementById('msg');
       msg.innerHTML = `<div class="msg ${type}">${text}</div>`;
-      setTimeout(() => msg.innerHTML = '', 4000);
+      setTimeout(() => msg.innerHTML = '', 5000);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  POSTS
+    // ══════════════════════════════════════════════════════════════════════════
+    let editingPostId = null;
 
     async function loadPosts() {
       try {
         const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
         const posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         document.getElementById('postCount').textContent = posts.length;
-        
+
         if (posts.length === 0) {
           document.getElementById('postsList').innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">No posts yet. Create your first post above!</p>';
           return;
@@ -236,7 +370,6 @@
 
     async function savePost(e) {
       e.preventDefault();
-      
       const data = {
         title: document.getElementById('title').value.trim(),
         preview: document.getElementById('preview').value.trim(),
@@ -250,21 +383,20 @@
         readTime: document.getElementById('readTime').value.trim(),
         hasVideo: document.getElementById('hasVideo').checked,
         videoUrl: document.getElementById('hasVideo').checked ? document.getElementById('videoUrl').value.trim() : '',
-        likes: editingId ? (document.getElementById('postId').dataset.likes || 0) : 0,
-        comments: editingId ? (document.getElementById('postId').dataset.comments || 0) : 0,
-        createdAt: editingId ? document.getElementById('originalCreatedAt').value : new Date().toISOString().split('T')[0],
+        likes: editingPostId ? (Number(document.getElementById('postId').dataset.likes) || 0) : 0,
+        comments: editingPostId ? (Number(document.getElementById('postId').dataset.comments) || 0) : 0,
+        createdAt: editingPostId ? document.getElementById('originalCreatedAt').value : new Date().toISOString().split('T')[0],
         updatedAt: new Date().toISOString().split('T')[0],
       };
-
       try {
-        if (editingId) {
-          await db.collection('posts').doc(editingId).update(data);
+        if (editingPostId) {
+          await db.collection('posts').doc(editingPostId).update(data);
           showMsg('✅ Post updated successfully!', 'success');
         } else {
           await db.collection('posts').add(data);
           showMsg('✅ Post published successfully!', 'success');
         }
-        resetForm();
+        resetPostForm();
         loadPosts();
         window.scrollTo({ top: document.getElementById('postsList').offsetTop, behavior: 'smooth' });
       } catch (err) {
@@ -275,13 +407,9 @@
     window.editPost = async (id) => {
       try {
         const doc = await db.collection('posts').doc(id).get();
-        if (!doc.exists) {
-          showMsg('Post not found!', 'error');
-          return;
-        }
+        if (!doc.exists) { showMsg('Post not found!', 'error'); return; }
         const data = doc.data();
-        editingId = id;
-        
+        editingPostId = id;
         document.getElementById('formTitle').textContent = '✏️ Edit Post';
         document.getElementById('postId').value = id;
         document.getElementById('postId').dataset.likes = data.likes || 0;
@@ -301,14 +429,17 @@
         document.getElementById('videoUrl').style.display = data.hasVideo ? 'block' : 'none';
         document.getElementById('submitBtn').textContent = '💾 Update Post';
         document.getElementById('cancelBtn').style.display = 'inline-block';
-        
         if (data.imageUrl) {
           document.getElementById('imagePreview').src = data.imageUrl;
           document.getElementById('imagePreview').style.display = 'block';
         } else {
           document.getElementById('imagePreview').style.display = 'none';
         }
-        
+        // Switch to posts tab if needed
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-posts').classList.add('active');
+        document.querySelector('.tab-btn').classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
         showMsg('❌ Error loading post: ' + err.message, 'error');
@@ -327,8 +458,8 @@
       }
     };
 
-    function resetForm() {
-      editingId = null;
+    function resetPostForm() {
+      editingPostId = null;
       document.getElementById('formTitle').textContent = '📝 Create New Post';
       document.getElementById('postForm').reset();
       document.getElementById('postId').value = '';
@@ -345,21 +476,321 @@
     }
 
     document.getElementById('postForm').addEventListener('submit', savePost);
-    document.getElementById('cancelBtn').addEventListener('click', resetForm);
-    
-    document.getElementById('hasVideo').addEventListener('change', function() {
+    document.getElementById('cancelBtn').addEventListener('click', resetPostForm);
+    document.getElementById('hasVideo').addEventListener('change', function () {
       document.getElementById('videoUrl').style.display = this.checked ? 'block' : 'none';
     });
-    
-    document.getElementById('imageUrl').addEventListener('input', function() {
+    document.getElementById('imageUrl').addEventListener('input', function () {
       const preview = document.getElementById('imagePreview');
-      if (this.value.trim()) {
-        preview.src = this.value;
-        preview.style.display = 'block';
-      } else {
-        preview.style.display = 'none';
-      }
+      if (this.value.trim()) { preview.src = this.value; preview.style.display = 'block'; }
+      else { preview.style.display = 'none'; }
     });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  QUIZ QUESTIONS
+    // ══════════════════════════════════════════════════════════════════════════
+    let currentTopicId = null;
+    let currentTopicName = '';
+    let editingQuestionId = null;
+    let choiceCounter = 0;
+
+    // ── Taxonomy loaders ──────────────────────────────────────────────────────
+    async function loadQCategories() {
+      try {
+        const snap = await db.collection('categories').get();
+        const sel = document.getElementById('q-category');
+        sel.innerHTML = '<option value="">-- Select --</option>';
+        snap.docs.forEach(d => {
+          const data = d.data();
+          sel.innerHTML += `<option value="${d.id}">${data.icon || ''} ${data.name}</option>`;
+        });
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+      }
+    }
+
+    async function loadQSubCategories() {
+      const catId = document.getElementById('q-category').value;
+      const sel = document.getElementById('q-subcategory');
+      sel.innerHTML = '<option value="">-- Loading… --</option>';
+      document.getElementById('q-topic').innerHTML = '<option value="">-- Select System First --</option>';
+      hideQuizForms();
+
+      if (!catId) { sel.innerHTML = '<option value="">-- Select Category First --</option>'; return; }
+
+      try {
+        const snap = await db.collection('subCategories').where('categoryId', '==', catId).get();
+        sel.innerHTML = '<option value="">-- Select System --</option>';
+        snap.docs.forEach(d => {
+          const data = d.data();
+          sel.innerHTML += `<option value="${d.id}">${data.name}</option>`;
+        });
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error loading</option>';
+      }
+    }
+
+    async function loadQTopics() {
+      const subId = document.getElementById('q-subcategory').value;
+      const sel = document.getElementById('q-topic');
+      sel.innerHTML = '<option value="">-- Loading… --</option>';
+      hideQuizForms();
+
+      if (!subId) { sel.innerHTML = '<option value="">-- Select System First --</option>'; return; }
+
+      try {
+        const snap = await db.collection('topics').where('subCategoryId', '==', subId).get();
+        sel.innerHTML = '<option value="">-- Select Topic --</option>';
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const qCount = data.questionCount || 0;
+          sel.innerHTML += `<option value="${d.id}">${data.name} (${qCount} questions)</option>`;
+        });
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error loading</option>';
+      }
+    }
+
+    async function onTopicSelected() {
+      const topicId = document.getElementById('q-topic').value;
+      if (!topicId) { hideQuizForms(); return; }
+
+      currentTopicId = topicId;
+      const topicSnap = await db.collection('topics').doc(topicId).get();
+      currentTopicName = topicSnap.data()?.name || topicId;
+
+      // Show info
+      const info = document.getElementById('q-topic-info');
+      info.style.display = 'block';
+      info.textContent = `✅ Topic selected: "${currentTopicName}" — you can now add questions below.`;
+
+      // Show form and list
+      document.getElementById('q-form-card').style.display = 'block';
+      document.getElementById('q-list-card').style.display = 'block';
+
+      resetQuestionForm();
+      loadQuestions(topicId);
+    }
+
+    function hideQuizForms() {
+      currentTopicId = null;
+      document.getElementById('q-topic-info').style.display = 'none';
+      document.getElementById('q-form-card').style.display = 'none';
+      document.getElementById('q-list-card').style.display = 'none';
+    }
+
+    // ── Choices builder ───────────────────────────────────────────────────────
+    function addChoice(text = '', isCorrect = false) {
+      choiceCounter++;
+      const id = 'choice_' + choiceCounter;
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const existingCount = document.querySelectorAll('.choice-row').length;
+      const letter = letters[existingCount] || String(existingCount + 1);
+
+      const row = document.createElement('div');
+      row.className = 'choice-row';
+      row.dataset.choiceId = id;
+      row.innerHTML = `
+        <span class="choice-label">${letter}.</span>
+        <input type="text" placeholder="Answer option ${letter}…" value="${text}" style="margin-bottom:0;">
+        <input type="radio" name="correct-choice" value="${id}" title="Mark as correct answer" ${isCorrect ? 'checked' : ''}>
+        <span class="choice-correct-label" style="font-size:10px;color:#9ca3af;">✓ Correct</span>
+        <button type="button" class="remove-choice-btn" onclick="removeChoice(this)">✕</button>
+      `;
+      document.getElementById('choices-container').appendChild(row);
+    }
+
+    function removeChoice(btn) {
+      const rows = document.querySelectorAll('.choice-row');
+      if (rows.length <= 2) { showMsg('⚠️ A question must have at least 2 choices.', 'error'); return; }
+      btn.closest('.choice-row').remove();
+      // Re-label
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+      document.querySelectorAll('.choice-row').forEach((row, i) => {
+        row.querySelector('.choice-label').textContent = (letters[i] || String(i + 1)) + '.';
+        row.querySelector('input[type="text"]').placeholder = 'Answer option ' + (letters[i] || (i + 1)) + '…';
+      });
+    }
+
+    function getChoicesFromForm() {
+      const rows = document.querySelectorAll('.choice-row');
+      const correctRadio = document.querySelector('input[name="correct-choice"]:checked');
+      const choices = [];
+      let correctId = null;
+      rows.forEach(row => {
+        const cId = row.dataset.choiceId;
+        const text = row.querySelector('input[type="text"]').value.trim();
+        const radio = row.querySelector('input[type="radio"]');
+        choices.push({ id: cId, text });
+        if (radio.checked) correctId = cId;
+      });
+      return { choices, correctId };
+    }
+
+    // ── Save / update question ────────────────────────────────────────────────
+    async function saveQuestion() {
+      const stem = document.getElementById('q-stem').value.trim();
+      const explanation = document.getElementById('q-explanation').value.trim();
+      const difficulty = document.getElementById('q-difficulty').value;
+      const tagsRaw = document.getElementById('q-tags').value.trim();
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+      if (!stem) { showMsg('⚠️ Question stem is required.', 'error'); return; }
+      if (!explanation) { showMsg('⚠️ Explanation is required.', 'error'); return; }
+      if (!currentTopicId) { showMsg('⚠️ No topic selected.', 'error'); return; }
+
+      const { choices, correctId } = getChoicesFromForm();
+
+      if (choices.length < 2) { showMsg('⚠️ Add at least 2 choices.', 'error'); return; }
+      if (choices.some(c => !c.text)) { showMsg('⚠️ All choice fields must be filled in.', 'error'); return; }
+      if (!correctId) { showMsg('⚠️ Please select the correct answer using the radio button.', 'error'); return; }
+
+      const data = {
+        topicId: currentTopicId,
+        stem,
+        choices,
+        correctAnswerId: correctId,
+        explanation,
+        difficulty,
+        tags,
+        createdAt: editingQuestionId ? undefined : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      // Remove undefined keys
+      Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
+
+      try {
+        if (editingQuestionId) {
+          await db.collection('questions').doc(editingQuestionId).update(data);
+          showMsg('✅ Question updated!', 'success');
+        } else {
+          await db.collection('questions').add(data);
+          // Increment topic questionCount
+          await db.collection('topics').doc(currentTopicId).update({
+            questionCount: firebase.firestore.FieldValue.increment(1)
+          });
+          showMsg('✅ Question saved!', 'success');
+        }
+        resetQuestionForm();
+        loadQuestions(currentTopicId);
+        // Refresh topic dropdown to show updated counts
+        loadQTopics();
+      } catch (err) {
+        showMsg('❌ Error saving question: ' + err.message, 'error');
+      }
+    }
+
+    // ── Load questions list ───────────────────────────────────────────────────
+    async function loadQuestions(topicId) {
+      const listEl = document.getElementById('questionsList');
+      listEl.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">Loading…</p>';
+      try {
+        const snap = await db.collection('questions').where('topicId', '==', topicId).get();
+        document.getElementById('q-count').textContent = snap.size;
+
+        if (snap.empty) {
+          listEl.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:20px;">No questions yet for this topic. Add one above!</p>';
+          return;
+        }
+
+        listEl.innerHTML = snap.docs.map(d => {
+          const q = d.data();
+          const preview = q.stem ? (q.stem.length > 100 ? q.stem.substring(0, 100) + '…' : q.stem) : 'No stem';
+          const diffBadge = { easy: 'green', medium: 'orange', hard: 'purple' }[q.difficulty] || 'blue';
+          const choiceCount = (q.choices || []).length;
+          return `
+            <div class="q-item">
+              <div class="q-stem">${preview}</div>
+              <div class="q-meta">
+                <div>
+                  <span class="badge ${diffBadge}">${q.difficulty || 'medium'}</span>
+                  <span class="badge blue">${choiceCount} choices</span>
+                </div>
+                <div class="post-actions">
+                  <button onclick="editQuestion('${d.id}')" class="warning small">✏️ Edit</button>
+                  <button onclick="deleteQuestion('${d.id}')" class="danger small">🗑️ Delete</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        listEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:20px;">Error: ${err.message}</p>`;
+      }
+    }
+
+    // ── Edit question ─────────────────────────────────────────────────────────
+    window.editQuestion = async (id) => {
+      try {
+        const doc = await db.collection('questions').doc(id).get();
+        if (!doc.exists) { showMsg('Question not found!', 'error'); return; }
+        const q = doc.data();
+        editingQuestionId = id;
+
+        document.getElementById('q-formTitle').textContent = '✏️ Edit Question';
+        document.getElementById('q-stem').value = q.stem || '';
+        document.getElementById('q-explanation').value = q.explanation || '';
+        document.getElementById('q-difficulty').value = q.difficulty || 'medium';
+        document.getElementById('q-tags').value = (q.tags || []).join(', ');
+        document.getElementById('q-submitBtn').textContent = '💾 Update Question';
+        document.getElementById('q-cancelBtn').style.display = 'inline-block';
+
+        // Re-render choices
+        document.getElementById('choices-container').innerHTML = '';
+        choiceCounter = 0;
+        (q.choices || []).forEach(c => {
+          addChoice(c.text, c.id === q.correctAnswerId);
+          // Ensure the radio value matches stored id
+          const rows = document.querySelectorAll('.choice-row');
+          const lastRow = rows[rows.length - 1];
+          lastRow.dataset.choiceId = c.id;
+          lastRow.querySelector('input[type="radio"]').value = c.id;
+          if (c.id === q.correctAnswerId) lastRow.querySelector('input[type="radio"]').checked = true;
+        });
+
+        window.scrollTo({ top: document.getElementById('q-form-card').offsetTop - 20, behavior: 'smooth' });
+      } catch (err) {
+        showMsg('❌ Error: ' + err.message, 'error');
+      }
+    };
+
+    // ── Delete question ───────────────────────────────────────────────────────
+    window.deleteQuestion = async (id) => {
+      if (!confirm('Delete this question? This cannot be undone.')) return;
+      try {
+        await db.collection('questions').doc(id).delete();
+        // Decrement topic count (don't go below 0)
+        const topicDoc = await db.collection('topics').doc(currentTopicId).get();
+        const currentCount = topicDoc.data()?.questionCount || 0;
+        if (currentCount > 0) {
+          await db.collection('topics').doc(currentTopicId).update({
+            questionCount: firebase.firestore.FieldValue.increment(-1)
+          });
+        }
+        showMsg('🗑️ Question deleted.', 'success');
+        loadQuestions(currentTopicId);
+        loadQTopics();
+      } catch (err) {
+        showMsg('❌ Error: ' + err.message, 'error');
+      }
+    };
+
+    // ── Reset form ────────────────────────────────────────────────────────────
+    function resetQuestionForm() {
+      editingQuestionId = null;
+      document.getElementById('q-formTitle').textContent = '➕ Add New Question';
+      document.getElementById('q-stem').value = '';
+      document.getElementById('q-explanation').value = '';
+      document.getElementById('q-difficulty').value = 'medium';
+      document.getElementById('q-tags').value = '';
+      document.getElementById('q-submitBtn').textContent = '✅ Save Question';
+      document.getElementById('q-cancelBtn').style.display = 'none';
+
+      // Default 4 choices
+      document.getElementById('choices-container').innerHTML = '';
+      choiceCounter = 0;
+      addChoice(); addChoice(); addChoice(); addChoice();
+    }
   </script>
 </body>
 </html>
