@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExamConfig, ExamQuestion } from '../../types';
+import { ExamConfig, ExamQuestion, Question } from '../../types';
 import { useExamStore } from '../../stores/useExamStore';
 import { fetchCategories, fetchSubCategories, fetchTopics } from '../../data/categories';
+import {
+  fetchQuestionsByTopic,
+  fetchQuestionsByTopics,
+  fetchAllQuestionsForQuiz,
+} from '../../data/questions';
 import { sessionManager } from '../../utils/sessionManager';
 import { questionSelector } from '../../utils/questionSelector';
-
-const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
 export const ExamSetupContainer: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +30,7 @@ export const ExamSetupContainer: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => { loadCategories(); }, []);
+
   useEffect(() => {
     if (categoryId && (scope === 'subCategory' || scope === 'topic')) {
       loadSubCategories(categoryId);
@@ -35,6 +39,7 @@ export const ExamSetupContainer: React.FC = () => {
       setSubCategoryId('');
     }
   }, [categoryId, scope]);
+
   useEffect(() => {
     if (subCategoryId && scope === 'topic') {
       loadTopics(subCategoryId);
@@ -54,46 +59,49 @@ export const ExamSetupContainer: React.FC = () => {
       setLoading(false);
     }
   };
+
   const loadSubCategories = async (catId: string) => {
     try {
       const data = await fetchSubCategories(catId);
       setSubCategories(data);
-    } catch { console.error('Failed to load subcategories'); }
+    } catch {
+      setError('Failed to load sub-categories. Please try again.');
+    }
   };
+
   const loadTopics = async (subId: string) => {
     try {
       const data = await fetchTopics(subId);
       setTopics(data);
-    } catch { console.error('Failed to load topics'); }
+    } catch {
+      setError('Failed to load topics. Please try again.');
+    }
   };
 
-  const fetchQuestionsFromFirebase = async (tId: string): Promise<any[]> => {
-    const response = await fetch(`${FIRESTORE_URL}/questions`);
-    if (!response.ok) throw new Error('Network error');
-    const data = await response.json();
-    if (!data.documents) return [];
-    return data.documents
-      .filter((doc: any) => doc.fields.topicId?.stringValue === tId)
-      .map((doc: any) => {
-        const f = doc.fields;
-        return {
-          id: doc.name.split('/').pop(),
-          topicId: f.topicId?.stringValue || '',
-          stem: f.stem?.stringValue || '',
-          choices: f.choices?.arrayValue?.values?.map((v: any) => ({
-            id: v.mapValue?.fields?.id?.stringValue || '',
-            text: v.mapValue?.fields?.text?.stringValue || '',
-          })) || [],
-          difficulty: f.difficulty?.stringValue || 'medium',
-        };
-      });
+  const resolveQuestions = async (): Promise<Question[]> => {
+    if (scope === 'mixed') {
+      return fetchAllQuestionsForQuiz();
+    }
+    if (scope === 'topic' && topicId) {
+      return fetchQuestionsByTopic(topicId);
+    }
+    if (scope === 'subCategory' && subCategoryId) {
+      const scopeTopics = await fetchTopics(subCategoryId);
+      return fetchQuestionsByTopics(scopeTopics.map((t) => t.id));
+    }
+    if (scope === 'category' && categoryId) {
+      const subs = await fetchSubCategories(categoryId);
+      const allTopics = await Promise.all(subs.map((s) => fetchTopics(s.id)));
+      return fetchQuestionsByTopics(allTopics.flat().map((t) => t.id));
+    }
+    return [];
   };
 
   const canStart =
     scope === 'mixed' ||
-    (scope === 'category' && categoryId) ||
-    (scope === 'subCategory' && categoryId && subCategoryId) ||
-    (scope === 'topic' && categoryId && subCategoryId && topicId);
+    (scope === 'category' && !!categoryId) ||
+    (scope === 'subCategory' && !!categoryId && !!subCategoryId) ||
+    (scope === 'topic' && !!categoryId && !!subCategoryId && !!topicId);
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -103,19 +111,19 @@ export const ExamSetupContainer: React.FC = () => {
     try {
       const config: ExamConfig = {
         scope,
-        scopeId: scope === 'topic' ? topicId : scope === 'subCategory' ? subCategoryId : scope === 'category' ? categoryId : undefined,
+        scopeId:
+          scope === 'topic' ? topicId
+          : scope === 'subCategory' ? subCategoryId
+          : scope === 'category' ? categoryId
+          : undefined,
         questionCount,
         timeLimitMinutes: timeLimit,
       };
 
-      let allQuestions: any[] = [];
-
-      if (scope === 'topic' && topicId) {
-        allQuestions = await fetchQuestionsFromFirebase(topicId);
-      }
+      const allQuestions = await resolveQuestions();
 
       if (allQuestions.length === 0) {
-        setError('No questions found for this selection. Please choose a different topic or check back later.');
+        setError('No questions found for this selection. Please choose a different scope or check back later.');
         return;
       }
 
@@ -123,13 +131,13 @@ export const ExamSetupContainer: React.FC = () => {
       const scopeKey = sessionManager.buildScopeKey(scope, config.scopeId);
 
       const { selected } = questionSelector.selectQuestions(
-        allQuestions as any,
+        allQuestions,
         session,
         scopeKey,
-        Math.min(questionCount, allQuestions.length)
+        Math.min(questionCount, allQuestions.length),
       );
 
-      // Strip answers for exam — correctAnswerId intentionally omitted
+      // Strip answers for exam mode
       const examQuestions: ExamQuestion[] = selected.map((q, i) => ({
         id: q.id,
         topicId: q.topicId,
@@ -164,7 +172,6 @@ export const ExamSetupContainer: React.FC = () => {
         <p className="text-gray-500 mt-1">Full exam simulation with timed conditions</p>
       </div>
 
-      {/* Error banner */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2">
           <span>⚠️</span>
@@ -181,7 +188,7 @@ export const ExamSetupContainer: React.FC = () => {
             { value: 'category', label: 'By Category', icon: '📂' },
             { value: 'subCategory', label: 'By System', icon: '🔬' },
             { value: 'topic', label: 'By Topic', icon: '📝' },
-          ].map(opt => (
+          ].map((opt) => (
             <button
               key={opt.value}
               onClick={() => {
@@ -203,11 +210,13 @@ export const ExamSetupContainer: React.FC = () => {
 
         {(scope === 'category' || scope === 'subCategory' || scope === 'topic') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-category">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-category">
+              Category
+            </label>
             <select
               id="exam-category"
               value={categoryId}
-              onChange={e => { setCategoryId(e.target.value); setSubCategoryId(''); setTopicId(''); setError(''); }}
+              onChange={(e) => { setCategoryId(e.target.value); setSubCategoryId(''); setTopicId(''); setError(''); }}
               className="input-field"
             >
               <option value="">Select a category…</option>
@@ -220,12 +229,14 @@ export const ExamSetupContainer: React.FC = () => {
 
         {(scope === 'subCategory' || scope === 'topic') && categoryId && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-sub">System / Area</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-sub">
+              System / Area
+            </label>
             {subCategories.length > 0 ? (
               <select
                 id="exam-sub"
                 value={subCategoryId}
-                onChange={e => { setSubCategoryId(e.target.value); setTopicId(''); setError(''); }}
+                onChange={(e) => { setSubCategoryId(e.target.value); setTopicId(''); setError(''); }}
                 className="input-field"
               >
                 <option value="">Select a system…</option>
@@ -241,17 +252,21 @@ export const ExamSetupContainer: React.FC = () => {
 
         {scope === 'topic' && subCategoryId && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-topic">Topic</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="exam-topic">
+              Topic
+            </label>
             {topics.length > 0 ? (
               <select
                 id="exam-topic"
                 value={topicId}
-                onChange={e => { setTopicId(e.target.value); setError(''); }}
+                onChange={(e) => { setTopicId(e.target.value); setError(''); }}
                 className="input-field"
               >
                 <option value="">Select a topic…</option>
                 {topics.map((topic: any) => (
-                  <option key={topic.id} value={topic.id}>{topic.name} ({topic.questionCount} qs)</option>
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name} ({topic.questionCount} qs)
+                  </option>
                 ))}
               </select>
             ) : (
@@ -265,7 +280,7 @@ export const ExamSetupContainer: React.FC = () => {
       <div className="card space-y-3">
         <p className="text-sm font-semibold text-gray-700">Time Limit</p>
         <div className="grid grid-cols-4 gap-2">
-          {[30, 45, 60, 90].map(mins => (
+          {[30, 45, 60, 90].map((mins) => (
             <button
               key={mins}
               onClick={() => setTimeLimit(mins)}
@@ -287,7 +302,10 @@ export const ExamSetupContainer: React.FC = () => {
           { label: 'Time Limit', value: `${timeLimit} minutes` },
           { label: 'Feedback', value: 'After submission only' },
         ].map((row, i) => (
-          <div key={row.label} className={`flex justify-between px-6 py-3 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+          <div
+            key={row.label}
+            className={`flex justify-between px-6 py-3 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+          >
             <span className="text-sm text-gray-500">{row.label}</span>
             <span className="text-sm font-semibold text-gray-800">{row.value}</span>
           </div>
