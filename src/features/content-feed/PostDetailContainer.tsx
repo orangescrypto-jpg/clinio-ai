@@ -41,6 +41,8 @@ export const PostDetailContainer: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentError, setCommentError] = useState('');
 
   useEffect(() => {
     if (postId) {
@@ -99,6 +101,8 @@ export const PostDetailContainer: React.FC = () => {
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
+    setSubmittingComment(true);
+    setCommentError('');
     e.preventDefault();
     if (!newName.trim() || !newMessage.trim()) return;
     try {
@@ -117,7 +121,7 @@ export const PostDetailContainer: React.FC = () => {
       setNewName('');
       setNewMessage('');
       fetchComments();
-    } catch (err) { console.error('Failed to save comment:', err); }
+    } catch (err) { console.error('Failed to save comment:', err); setCommentError('Failed to post comment. Please try again.'); } finally { setSubmittingComment(false); }
   };
 
   if (loading) {
@@ -205,7 +209,8 @@ export const PostDetailContainer: React.FC = () => {
         <form onSubmit={handleAddComment} className="space-y-3 bg-white rounded-xl border border-gray-100 p-4 sm:p-5 -mx-4 sm:mx-0">
           <input type="text" placeholder="Your name" value={newName} onChange={e => setNewName(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" required />
           <textarea placeholder="Write a comment..." value={newMessage} onChange={e => setNewMessage(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none" rows={3} required />
-          <button type="submit" className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all">Post Comment</button>
+          {commentError && <p className="text-sm text-red-600">{commentError}</p>}
+          <button type="submit" disabled={submittingComment} className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all disabled:opacity-50">{submittingComment ? 'Posting2026' : 'Post Comment'}</button>
         </form>
 
         {loadingComments ? (
