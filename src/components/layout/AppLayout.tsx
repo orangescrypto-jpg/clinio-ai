@@ -14,6 +14,9 @@ export const AppLayout: React.FC = () => {
     { to: '/exam', icon: '📝', label: 'Exam Mode' },
   ];
 
+  // Home page needs full-bleed hero — skip inner padding
+  const isHome = location.pathname === '/';
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile Header */}
@@ -59,11 +62,9 @@ export const AppLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="md:ml-64 flex flex-col flex-1 min-h-screen">
-          <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-8">
+          <main className={`flex-1 pb-20 md:pb-8 ${isHome ? '' : 'max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6'}`}>
             <Outlet />
           </main>
-          
-          {/* Footer - Always visible */}
           <Footer />
         </div>
       </div>
