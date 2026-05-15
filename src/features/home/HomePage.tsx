@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Post {
   id: string;
@@ -22,18 +24,56 @@ interface Topic {
   questionCount: number;
 }
 
+// ─── Static Data ──────────────────────────────────────────────────────────────
+
 const features = [
-  { title: 'Rapid Quiz', icon: '⚡', description: 'Timed questions with instant feedback and explanations', link: '/rapid-quiz', color: 'bg-orange-50 border-orange-200 hover:border-orange-300', iconBg: 'bg-orange-100' },
-  { title: 'Clinical OSCE', icon: '🏥', description: 'Step-by-step patient case simulations with clinical reasoning', link: '/scenarios', color: 'bg-green-50 border-green-200 hover:border-green-300', iconBg: 'bg-green-100' },
-  { title: 'Clinio Room', icon: '📚', description: 'Educational content, videos, and discussions', link: '/feed', color: 'bg-blue-50 border-blue-200 hover:border-blue-300', iconBg: 'bg-blue-100' },
-  { title: 'Exam Mode', icon: '📝', description: 'Full exam simulation with results and performance breakdown', link: '/exam', color: 'bg-red-50 border-red-200 hover:border-red-300', iconBg: 'bg-red-100' },
+  {
+    title: 'Rapid Quiz',
+    icon: '⚡',
+    description: 'Timed questions with instant feedback and detailed explanations',
+    link: '/rapid-quiz',
+    accent: '#f97316',
+    bg: '#fff7ed',
+    border: '#fed7aa',
+    hoverBorder: '#fb923c',
+  },
+  {
+    title: 'Clinical OSCE',
+    icon: '🏥',
+    description: 'Step-by-step patient case simulations with clinical reasoning',
+    link: '/scenarios',
+    accent: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+    hoverBorder: '#4ade80',
+  },
+  {
+    title: 'Clinio Room',
+    icon: '📚',
+    description: 'Educational content, videos, and peer discussions',
+    link: '/feed',
+    accent: '#2563eb',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
+    hoverBorder: '#60a5fa',
+  },
+  {
+    title: 'Exam Mode',
+    icon: '📝',
+    description: 'Full exam simulation with performance breakdown and analytics',
+    link: '/exam',
+    accent: '#dc2626',
+    bg: '#fef2f2',
+    border: '#fecaca',
+    hoverBorder: '#f87171',
+  },
 ];
 
 const stats = [
   { number: '500+', label: 'Practice Questions', icon: '📝' },
   { number: '3', label: 'Exam Categories', icon: '📂' },
   { number: '100%', label: 'Free Access', icon: '🎓' },
-  { number: '24/7', label: 'Available', icon: '🌐' },
+  { number: '24/7', label: 'Always Available', icon: '🌐' },
 ];
 
 const categoryLinks = [
@@ -47,6 +87,118 @@ const categoryLinks = [
 
 const FIREBASE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse shadow-sm">
+    <div className="h-44 bg-gradient-to-r from-gray-100 to-gray-200" />
+    <div className="p-5 space-y-3">
+      <div className="flex gap-2">
+        <div className="h-5 bg-gray-100 rounded-full w-16" />
+        <div className="h-5 bg-gray-100 rounded-full w-20" />
+      </div>
+      <div className="h-5 bg-gray-100 rounded w-full" />
+      <div className="h-4 bg-gray-100 rounded w-3/4" />
+      <div className="h-3 bg-gray-100 rounded w-1/3" />
+    </div>
+  </div>
+);
+
+const EmptyState: React.FC<{ icon: string; title: string; subtitle: string; linkTo: string; linkLabel: string }> = ({
+  icon, title, subtitle, linkTo, linkLabel
+}) => (
+  <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+    <span className="text-5xl mb-4 block">{icon}</span>
+    <p className="text-lg font-semibold text-gray-700 mb-1">{title}</p>
+    <p className="text-gray-400 text-sm mb-6">{subtitle}</p>
+    <Link
+      to={linkTo}
+      className="inline-flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors text-sm"
+    >
+      {linkLabel} →
+    </Link>
+  </div>
+);
+
+const ErrorBanner: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <span className="text-xl">⚠️</span>
+      <div>
+        <p className="font-medium text-amber-800 text-sm">Could not load latest content</p>
+        <p className="text-amber-600 text-xs mt-0.5">Please check your connection and try again</p>
+      </div>
+    </div>
+    <button
+      onClick={onRetry}
+      className="text-sm font-semibold text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+    >
+      Retry
+    </button>
+  </div>
+);
+
+const SectionHeader: React.FC<{
+  title: string;
+  subtitle: string;
+  linkTo: string;
+  linkLabel: string;
+  linkColor?: string;
+}> = ({ title, subtitle, linkTo, linkLabel, linkColor = 'text-primary-600 hover:text-primary-700' }) => (
+  <div className="flex items-start justify-between mb-6 gap-4">
+    <div>
+      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">{title}</h2>
+      <p className="text-gray-500 mt-1 text-sm md:text-base">{subtitle}</p>
+    </div>
+    <Link
+      to={linkTo}
+      className={`hidden sm:inline-flex items-center gap-1 font-semibold whitespace-nowrap shrink-0 mt-1 transition-colors ${linkColor}`}
+    >
+      {linkLabel} <span>→</span>
+    </Link>
+  </div>
+);
+
+const PostCard: React.FC<{ post: Post; accentClass: string; tagLabel: string; tagColorClass: string; ctaLabel: string; formatDate: (d: string) => string }> = ({
+  post, accentClass, tagLabel, tagColorClass, ctaLabel, formatDate
+}) => (
+  <Link
+    to={`/feed/${post.id}`}
+    className={`group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col border-l-4 ${accentClass}`}
+  >
+    {post.imageUrl ? (
+      <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" loading="lazy" />
+    ) : (
+      <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <span className="text-5xl opacity-60">📄</span>
+      </div>
+    )}
+    <div className="p-5 flex flex-col flex-1">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${tagColorClass}`}>{tagLabel}</span>
+        {post.category && (
+          <span className="text-xs bg-gray-50 text-gray-500 px-2.5 py-1 rounded-full font-medium border border-gray-100">
+            {post.category}
+          </span>
+        )}
+        {post.hasVideo && (
+          <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬 Video</span>
+        )}
+      </div>
+      <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-primary-600 transition-colors">
+        {post.title}
+      </h3>
+      <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-1">{post.preview}</p>
+      <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-3 border-t border-gray-50">
+        <span>{post.readTime || '5 min read'}</span>
+        <span className="font-semibold text-primary-600 group-hover:underline">{ctaLabel} →</span>
+      </div>
+    </div>
+  </Link>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
@@ -57,65 +209,73 @@ export const HomePage: React.FC = () => {
   const [loadingScenarios, setLoadingScenarios] = useState(true);
   const [loadingPractice, setLoadingPractice] = useState(true);
   const [loadingTopics, setLoadingTopics] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchAllData = useCallback(async () => {
+    setFetchError(false);
+    setLoadingPosts(true);
+    setLoadingScenarios(true);
+    setLoadingPractice(true);
+    setLoadingTopics(true);
+    try {
+      const [postsData] = await Promise.all([
+        fetchAllPosts(),
+      ]);
+      processPosts(postsData);
+    } catch {
+      setFetchError(true);
+      setLoadingPosts(false);
+      setLoadingScenarios(false);
+      setLoadingPractice(false);
+    }
+    fetchQuizTopics();
+  }, []);
 
   useEffect(() => {
     fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
-    const allPosts = await fetchAllPosts();
-    processPosts(allPosts);
-    fetchQuizTopics();
-  };
+  }, [fetchAllData]);
 
   const fetchAllPosts = async (): Promise<Post[]> => {
-    try {
-      const response = await fetch(`${FIREBASE_URL}/posts`);
-      const data = await response.json();
-      if (data.documents) {
-        return data.documents.map((doc: any) => {
-          const f = doc.fields;
-          return {
-            id: doc.name.split('/').pop(),
-            title: f.title?.stringValue || '',
-            preview: f.preview?.stringValue || '',
-            topic: f.topic?.stringValue || '',
-            category: f.category?.stringValue || '',
-            subCategory: f.subCategory?.stringValue || '',
-            readTime: f.readTime?.stringValue || '',
-            createdAt: f.createdAt?.stringValue || '',
-            hasVideo: f.hasVideo?.booleanValue || false,
-            imageUrl: f.imageUrl?.stringValue || '',
-          };
-        });
-      }
-    } catch (err) {
-      console.error('Failed to load posts:', err);
-    }
-    return [];
+    const response = await fetch(`${FIREBASE_URL}/posts`);
+    if (!response.ok) throw new Error('Failed to fetch posts');
+    const data = await response.json();
+    if (!data.documents) return [];
+    return data.documents.map((doc: any) => {
+      const f = doc.fields;
+      return {
+        id: doc.name.split('/').pop(),
+        title: f.title?.stringValue || '',
+        preview: f.preview?.stringValue || '',
+        topic: f.topic?.stringValue || '',
+        category: f.category?.stringValue || '',
+        subCategory: f.subCategory?.stringValue || '',
+        readTime: f.readTime?.stringValue || '',
+        createdAt: f.createdAt?.stringValue || '',
+        hasVideo: f.hasVideo?.booleanValue || false,
+        imageUrl: f.imageUrl?.stringValue || '',
+      };
+    });
   };
 
   const processPosts = (allPosts: Post[]) => {
-    // Latest Posts (exclude practice and OSCE)
     const general = allPosts
-      .filter(p => 
-        p.topic !== 'Practice Mode' && 
+      .filter(p =>
+        p.topic !== 'Practice Mode' &&
         p.topic !== 'Practice Exam' &&
         p.subCategory !== 'OSCE' &&
         p.subCategory !== 'Clinical Scenario' &&
         p.topic !== 'Clinical Scenario'
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 10);
+      .slice(0, 9);
     setLatestPosts(general);
     setLoadingPosts(false);
 
-    // Clinical Scenarios
     const scenarios = allPosts
-      .filter(p => 
-        p.subCategory === 'OSCE' || 
-        p.subCategory === 'Clinical Scenario' || 
+      .filter(p =>
+        p.subCategory === 'OSCE' ||
+        p.subCategory === 'Clinical Scenario' ||
         p.topic === 'Clinical Scenario'
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -123,10 +283,9 @@ export const HomePage: React.FC = () => {
     setScenarioPosts(scenarios);
     setLoadingScenarios(false);
 
-    // Practice Exams
     const practice = allPosts
-      .filter(p => 
-        p.topic === 'Practice Mode' || 
+      .filter(p =>
+        p.topic === 'Practice Mode' ||
         p.topic === 'Practice Exam' ||
         p.subCategory === 'Practice Mode' ||
         p.title?.toLowerCase().includes('practice exam')
@@ -140,6 +299,7 @@ export const HomePage: React.FC = () => {
   const fetchQuizTopics = async () => {
     try {
       const response = await fetch(`${FIREBASE_URL}/topics`);
+      if (!response.ok) throw new Error('Failed to fetch topics');
       const data = await response.json();
       if (data.documents) {
         const allTopics = data.documents
@@ -150,7 +310,7 @@ export const HomePage: React.FC = () => {
               subCategoryId: f.subCategoryId?.stringValue || '',
               name: f.name?.stringValue || '',
               description: f.description?.stringValue || '',
-              questionCount: f.questionCount?.integerValue || f.questionCount?.stringValue || 0,
+              questionCount: Number(f.questionCount?.integerValue || f.questionCount?.stringValue || 0),
             };
           })
           .filter((t: Topic) => t.questionCount > 0)
@@ -165,15 +325,16 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return 'Recently added';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Recently added';
     const now = new Date();
     const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Yesterday';
     if (diff < 7) return `${diff} days ago`;
-    return dateStr;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -192,58 +353,120 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-0">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-primary-600 via-primary-700 to-blue-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+    <div>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className="bg-gradient-to-br from-primary-700 via-primary-600 to-blue-800 text-white relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/5 rounded-full pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full pointer-events-none" />
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-24 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight">
-              For All Your Nursing Needs
+            <span className="inline-block bg-white/15 border border-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-full mb-5 tracking-wide uppercase">
+              🩺 For Nursing &amp; Medical Students
+            </span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-5 leading-tight tracking-tight">
+              Ace Your Nursing Exams<br />
+              <span className="text-blue-200">With Clinio AI</span>
             </h1>
-            <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
-              Empowering your nursing journey with trusted resources. Practice questions, study guides, and clinical scenarios — all in one place.
+            <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Practice questions, clinical scenarios, and study guides — all in one place. 100% free, no login required.
             </p>
-            <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-6">
-              <div className="flex items-center bg-white rounded-xl shadow-lg overflow-hidden">
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search for topics, questions, or study guides..." className="flex-1 px-5 py-4 text-gray-900 text-base outline-none border-none" />
-                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-4 font-semibold transition-colors">🔍 Search</button>
+
+            {/* Search */}
+            <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-8" role="search">
+              <div className="flex items-center bg-white rounded-xl shadow-xl overflow-hidden ring-2 ring-white/20 focus-within:ring-white/50 transition-all">
+                <label htmlFor="hero-search" className="sr-only">Search topics or questions</label>
+                <input
+                  id="hero-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search topics, questions, or study guides..."
+                  className="flex-1 px-5 py-4 text-gray-900 text-base bg-transparent focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  aria-label="Search"
+                  className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-4 font-semibold transition-colors shrink-0"
+                >
+                  🔍 Search
+                </button>
               </div>
             </form>
-            <div className="flex flex-wrap justify-center gap-3 mt-6">
-              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors shadow-md">⚡ Start Practice Quiz</Link>
-              <Link to="/exam" className="bg-primary-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-400 transition-colors shadow-md border border-primary-400">📝 Take Full Exam</Link>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                to="/rapid-quiz"
+                className="bg-white text-primary-700 px-7 py-3 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-lg text-sm md:text-base"
+              >
+                ⚡ Start Practice Quiz
+              </Link>
+              <Link
+                to="/exam"
+                className="bg-white/10 border border-white/30 text-white px-7 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors text-sm md:text-base"
+              >
+                📝 Take Full Exam
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Stats Banner */}
-      <div className="bg-white border-b border-gray-200">
+      {/* ── Stats Banner ─────────────────────────────────────────────────── */}
+      <section className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map(stat => (
               <div key={stat.label} className="text-center">
-                <span className="text-2xl">{stat.icon}</span>
-                <p className="text-2xl md:text-3xl font-bold text-primary-600">{stat.number}</p>
-                <p className="text-sm text-gray-500">{stat.label}</p>
+                <span className="text-2xl block mb-1">{stat.icon}</span>
+                <p className="text-2xl md:text-3xl font-extrabold text-primary-600 leading-none">{stat.number}</p>
+                <p className="text-xs md:text-sm text-gray-500 mt-1">{stat.label}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+      {/* ── Main Content ─────────────────────────────────────────────────── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+
+        {/* Error Banner */}
+        {fetchError && (
+          <ErrorBanner onRetry={fetchAllData} />
+        )}
 
         {/* Feature Cards */}
         <section>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">How Clinio AI Works</h2>
-          <p className="text-gray-500 text-center mb-8">Choose your study mode and start learning</p>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">How Clinio AI Works</h2>
+            <p className="text-gray-500">Choose your study mode and start learning immediately</p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map(feature => (
-              <Link key={feature.title} to={feature.link} className={`p-6 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${feature.color}`}>
-                <div className={`w-12 h-12 ${feature.iconBg} rounded-lg flex items-center justify-center text-2xl mb-3`}>{feature.icon}</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{feature.title}</h3>
-                <p className="text-sm text-gray-600">{feature.description}</p>
+              <Link
+                key={feature.title}
+                to={feature.link}
+                style={{ background: feature.bg, borderColor: feature.border }}
+                className="group p-6 rounded-2xl border-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                onMouseEnter={e => (e.currentTarget.style.borderColor = feature.hoverBorder)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = feature.border)}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 shadow-sm"
+                  style={{ background: feature.accent + '22' }}
+                >
+                  {feature.icon}
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-1">{feature.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
+                <span
+                  className="mt-4 inline-block text-xs font-bold"
+                  style={{ color: feature.accent }}
+                >
+                  Get Started →
+                </span>
               </Link>
             ))}
           </div>
@@ -251,13 +474,20 @@ export const HomePage: React.FC = () => {
 
         {/* Quick Access Categories */}
         <section>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">Explore by Category</h2>
-          <p className="text-gray-500 text-center mb-8">Click to browse posts in each category</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Explore by Category</h2>
+            <p className="text-gray-500">Tap to browse study material in each area</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {categoryLinks.map(cat => (
-              <button key={cat.label} onClick={() => handleCategoryClick(cat.category)} className="text-center p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all group cursor-pointer">
+              <button
+                key={cat.label}
+                onClick={() => handleCategoryClick(cat.category)}
+                aria-label={`Browse ${cat.label}`}
+                className="group text-center p-4 bg-white rounded-2xl border-2 border-gray-100 hover:border-primary-300 hover:shadow-md transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
                 <span className="text-3xl block mb-2">{cat.icon}</span>
-                <p className="text-sm font-semibold text-gray-800 group-hover:text-primary-600">{cat.label}</p>
+                <p className="text-sm font-bold text-gray-800 group-hover:text-primary-600 transition-colors leading-tight">{cat.label}</p>
                 <p className="text-xs text-gray-400 mt-1">{cat.desc}</p>
               </button>
             ))}
@@ -266,135 +496,232 @@ export const HomePage: React.FC = () => {
 
         {/* Clinical Scenarios */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">🏥 Clinical Scenarios (OSCE)</h2>
-              <p className="text-gray-500 mt-1">Step-by-step patient case simulations with clinical reasoning</p>
-            </div>
-            <Link to="/scenarios" className="hidden sm:inline-flex items-center gap-1 text-green-600 font-semibold hover:text-green-700">View All Scenarios <span className="text-xl">→</span></Link>
-          </div>
+          <SectionHeader
+            title="🏥 Clinical Scenarios (OSCE)"
+            subtitle="Step-by-step patient case simulations for clinical reasoning"
+            linkTo="/scenarios"
+            linkLabel="View All Scenarios"
+            linkColor="text-green-600 hover:text-green-700"
+          />
           {loadingScenarios ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+            </div>
           ) : scenarioPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {scenarioPosts.map(post => (
-                  <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-green-500">
-                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center"><span className="text-4xl">🏥</span></div>}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium border border-green-100">OSCE</span><span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span></div>
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors">{post.title}</h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span className="text-green-600 font-medium">Start Scenario →</span></div>
-                    </div>
-                  </Link>
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    accentClass="border-l-green-500"
+                    tagLabel="OSCE"
+                    tagColorClass="bg-green-50 text-green-700 border-green-100"
+                    ctaLabel="Start Scenario"
+                    formatDate={formatDate}
+                  />
                 ))}
               </div>
-              <div className="text-center mt-6 sm:hidden"><Link to="/scenarios" className="btn-primary inline-flex items-center gap-2">View All Scenarios →</Link></div>
+              <div className="text-center mt-6 sm:hidden">
+                <Link to="/scenarios" className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                  View All Scenarios →
+                </Link>
+              </div>
             </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">🏥</p><p className="text-gray-500 text-lg">Clinical scenarios coming soon!</p></div>
+            <EmptyState
+              icon="🏥"
+              title="Clinical scenarios coming soon"
+              subtitle="Check back soon — new OSCE cases are being added regularly"
+              linkTo="/rapid-quiz"
+              linkLabel="Try Rapid Quiz Instead"
+            />
           )}
         </section>
 
         {/* Practice Exams */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">📝 Practice Exams</h2>
-              <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
-            </div>
-            <Link to="/practice-exams" className="hidden sm:inline-flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700">View All Practice Exams <span className="text-xl">→</span></Link>
-          </div>
+          <SectionHeader
+            title="📝 Practice Exams"
+            subtitle="Self-paced practice with instant feedback and detailed rationales"
+            linkTo="/practice-exams"
+            linkLabel="View All Exams"
+            linkColor="text-blue-600 hover:text-blue-700"
+          />
           {loadingPractice ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+            </div>
           ) : practicePosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {practicePosts.map(post => (
-                  <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-blue-500">
-                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center"><span className="text-4xl">📝</span></div>}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium border border-blue-100">Practice Mode</span><span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span></div>
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{post.title}</h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span className="text-blue-600 font-medium">Start Practice →</span></div>
-                    </div>
-                  </Link>
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    accentClass="border-l-blue-500"
+                    tagLabel="Practice Mode"
+                    tagColorClass="bg-blue-50 text-blue-700 border-blue-100"
+                    ctaLabel="Start Practice"
+                    formatDate={formatDate}
+                  />
                 ))}
               </div>
-              <div className="text-center mt-6 sm:hidden"><Link to="/practice-exams" className="btn-primary inline-flex items-center gap-2">View All Practice Exams →</Link></div>
+              <div className="text-center mt-6 sm:hidden">
+                <Link to="/practice-exams" className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                  View All Practice Exams →
+                </Link>
+              </div>
             </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">Practice exams coming soon!</p></div>
+            <EmptyState
+              icon="📝"
+              title="Practice exams coming soon"
+              subtitle="Full-length practice exams with rationales will be available soon"
+              linkTo="/exam"
+              linkLabel="Try Exam Mode"
+            />
           )}
         </section>
 
         {/* Latest Posts */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <div><h2 className="text-2xl md:text-3xl font-bold text-gray-900">📚 Latest Study Guides & Posts</h2><p className="text-gray-500 mt-1">Expert-written content for nursing and medical students</p></div>
-            <Link to="/feed" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">View All Posts <span className="text-xl">→</span></Link>
-          </div>
+          <SectionHeader
+            title="📚 Latest Study Guides & Posts"
+            subtitle="Expert-written content for nursing and medical students"
+            linkTo="/feed"
+            linkLabel="View All Posts"
+          />
           {loadingPosts ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i=><div key={i} className="card p-5 animate-pulse"><div className="h-40 bg-gray-200 rounded-lg mb-3"></div><div className="h-4 bg-gray-200 rounded w-20 mb-2"></div><div className="h-5 bg-gray-200 rounded w-full mb-2"></div><div className="h-4 bg-gray-200 rounded w-3/4"></div></div>)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+            </div>
           ) : latestPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {latestPosts.map(post => (
-                  <Link key={post.id} to={`/feed/${post.id}`} className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group">
-                    {post.imageUrl ? <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" /> : <div className="w-full h-44 bg-gradient-to-br from-primary-100 to-blue-100 flex items-center justify-center"><span className="text-4xl">📚</span></div>}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 mb-2"><span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-medium border border-primary-100">{post.topic}</span>{post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬</span>}</div>
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">{post.title}</h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400"><span>{post.readTime}</span><span>{formatDate(post.createdAt)}</span></div>
-                    </div>
-                  </Link>
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    accentClass="border-l-primary-400"
+                    tagLabel={post.topic || 'Study Guide'}
+                    tagColorClass="bg-primary-50 text-primary-700 border-primary-100"
+                    ctaLabel="Read More"
+                    formatDate={formatDate}
+                  />
                 ))}
               </div>
-              {latestPosts.length > 6 && <div className="text-center mt-8"><Link to="/feed" className="btn-primary inline-flex items-center gap-2 px-8 py-3">View All {latestPosts.length} Posts <span>→</span></Link></div>}
+              {latestPosts.length >= 9 && (
+                <div className="text-center mt-10">
+                  <Link
+                    to="/feed"
+                    className="inline-flex items-center gap-2 bg-primary-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-primary-700 transition-colors shadow-md"
+                  >
+                    Browse All Study Guides →
+                  </Link>
+                </div>
+              )}
             </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">No posts yet. Check back soon for study guides!</p></div>
+            <EmptyState
+              icon="📖"
+              title="No posts yet"
+              subtitle="Study guides and posts will appear here — check back soon!"
+              linkTo="/rapid-quiz"
+              linkLabel="Start Practicing"
+            />
           )}
         </section>
 
         {/* Popular Quiz Topics */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <div><h2 className="text-2xl md:text-3xl font-bold text-gray-900">⚡ Popular Quiz Topics</h2><p className="text-gray-500 mt-1">Practice with our most popular question sets</p></div>
-            <Link to="/rapid-quiz" className="hidden sm:inline-flex items-center gap-1 text-primary-600 font-semibold hover:text-primary-700">Start a Quiz <span className="text-xl">→</span></Link>
-          </div>
+          <SectionHeader
+            title="⚡ Popular Quiz Topics"
+            subtitle="Practice with our most popular question sets"
+            linkTo="/rapid-quiz"
+            linkLabel="Start a Quiz"
+          />
           {loadingTopics ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">{[1,2,3,4,5].map(i=><div key={i} className="card p-4 animate-pulse"><div className="h-3 bg-gray-200 rounded w-16 mb-2"></div><div className="h-4 bg-gray-200 rounded w-full"></div></div>)}</div>
-          ) : quizTopics.length > 0 ? (
-            <><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {quizTopics.map(topic => (
-                <button key={topic.id} onClick={() => handleTopicQuizClick(topic.name)} className="card p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer border-2 border-transparent hover:border-primary-200">
-                  <span className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded-full font-medium">{topic.questionCount} Questions</span>
-                  <h4 className="font-semibold text-gray-900 mt-2 text-sm">{topic.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
-                </button>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse space-y-2">
+                  <div className="h-5 bg-gray-100 rounded-full w-16" />
+                  <div className="h-4 bg-gray-100 rounded w-full" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4" />
+                </div>
               ))}
             </div>
-            {quizTopics.length > 5 && <div className="text-center mt-8"><Link to="/rapid-quiz" className="btn-primary inline-flex items-center gap-2 px-8 py-3">Explore All Quiz Topics <span>→</span></Link></div>}</>
+          ) : quizTopics.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {quizTopics.map(topic => (
+                  <button
+                    key={topic.id}
+                    onClick={() => handleTopicQuizClick(topic.name)}
+                    aria-label={`Start quiz on ${topic.name}`}
+                    className="bg-white rounded-2xl border-2 border-gray-100 p-4 text-left hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  >
+                    <span className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full font-bold">
+                      {topic.questionCount} Qs
+                    </span>
+                    <h4 className="font-bold text-gray-900 mt-2.5 text-sm leading-snug">{topic.name}</h4>
+                    {topic.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{topic.description}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {quizTopics.length >= 10 && (
+                <div className="text-center mt-8">
+                  <Link
+                    to="/rapid-quiz"
+                    className="inline-flex items-center gap-2 bg-primary-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-primary-700 transition-colors shadow-md"
+                  >
+                    Explore All Quiz Topics →
+                  </Link>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-xl"><p className="text-4xl mb-3">📝</p><p className="text-gray-500 text-lg">Quiz topics coming soon!</p></div>
+            <EmptyState
+              icon="⚡"
+              title="Quiz topics coming soon"
+              subtitle="Question sets across all nursing topics will be available here"
+              linkTo="/rapid-quiz"
+              linkLabel="Go to Rapid Quiz"
+            />
           )}
         </section>
 
-        {/* CTA */}
+        {/* Final CTA */}
         <section>
-          <div className="bg-gradient-to-r from-primary-600 to-blue-700 rounded-2xl p-8 md:p-12 text-white text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Ace Your Nursing Exams?</h2>
-            <p className="text-primary-100 mb-6 max-w-2xl mx-auto">Join thousands of nursing students using Clinio AI. 100% free, no login required.</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link to="/rapid-quiz" className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition-colors shadow-lg">Start Practicing Now</Link>
-              <Link to="/feed" className="bg-primary-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-primary-400 transition-colors border border-primary-400">Browse Study Guides</Link>
+          <div className="bg-gradient-to-r from-primary-700 to-blue-700 rounded-3xl p-8 md:p-14 text-white text-center relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
+            <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-white/5 rounded-full pointer-events-none" />
+            <div className="relative z-10">
+              <span className="text-4xl block mb-4">🎓</span>
+              <h2 className="text-2xl md:text-3xl font-extrabold mb-3">Ready to Ace Your Nursing Exams?</h2>
+              <p className="text-primary-100 mb-8 max-w-2xl mx-auto">
+                Join thousands of nursing students using Clinio AI. Practice smarter, not harder — 100% free, no account needed.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <Link
+                  to="/rapid-quiz"
+                  className="bg-white text-primary-700 px-8 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-lg"
+                >
+                  ⚡ Start Practicing Now
+                </Link>
+                <Link
+                  to="/feed"
+                  className="bg-white/10 border border-white/30 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-white/20 transition-colors"
+                >
+                  📚 Browse Study Guides
+                </Link>
+              </div>
             </div>
           </div>
         </section>
+
       </div>
     </div>
   );
