@@ -24,6 +24,11 @@ interface Topic {
   questionCount: number;
 }
 
+interface LiveStats {
+  questions: number;
+  categories: number;
+}
+
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
 const features = [
@@ -69,13 +74,6 @@ const features = [
   },
 ];
 
-const stats = [
-  { number: '500+', label: 'Practice Questions', icon: '📝' },
-  { number: '3', label: 'Exam Categories', icon: '📂' },
-  { number: '100%', label: 'Free Access', icon: '🎓' },
-  { number: '24/7', label: 'Always Available', icon: '🌐' },
-];
-
 const categoryLinks = [
   { icon: '🏥', label: 'Clinical Medicine', desc: 'Core clinical knowledge', category: 'Clinical Medicine' },
   { icon: '🩺', label: 'NCLEX Practice', desc: 'US/Canada exam prep', category: 'NCLEX' },
@@ -104,9 +102,13 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
-const EmptyState: React.FC<{ icon: string; title: string; subtitle: string; linkTo: string; linkLabel: string }> = ({
-  icon, title, subtitle, linkTo, linkLabel
-}) => (
+const EmptyState: React.FC<{
+  icon: string;
+  title: string;
+  subtitle: string;
+  linkTo: string;
+  linkLabel: string;
+}> = ({ icon, title, subtitle, linkTo, linkLabel }) => (
   <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
     <span className="text-5xl mb-4 block">{icon}</span>
     <p className="text-lg font-semibold text-gray-700 mb-1">{title}</p>
@@ -159,9 +161,14 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-const PostCard: React.FC<{ post: Post; accentClass: string; tagLabel: string; tagColorClass: string; ctaLabel: string; formatDate: (d: string) => string }> = ({
-  post, accentClass, tagLabel, tagColorClass, ctaLabel, formatDate
-}) => (
+const PostCard: React.FC<{
+  post: Post;
+  accentClass: string;
+  tagLabel: string;
+  tagColorClass: string;
+  ctaLabel: string;
+  formatDate: (d: string) => string;
+}> = ({ post, accentClass, tagLabel, tagColorClass, ctaLabel, formatDate }) => (
   <Link
     to={`/feed/${post.id}`}
     className={`group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col border-l-4 ${accentClass}`}
@@ -175,14 +182,18 @@ const PostCard: React.FC<{ post: Post; accentClass: string; tagLabel: string; ta
     )}
     <div className="p-5 flex flex-col flex-1">
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${tagColorClass}`}>{tagLabel}</span>
+        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${tagColorClass}`}>
+          {tagLabel}
+        </span>
         {post.category && (
           <span className="text-xs bg-gray-50 text-gray-500 px-2.5 py-1 rounded-full font-medium border border-gray-100">
             {post.category}
           </span>
         )}
         {post.hasVideo && (
-          <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬 Video</span>
+          <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">
+            🎬 Video
+          </span>
         )}
       </div>
       <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-primary-600 transition-colors">
@@ -197,48 +208,46 @@ const PostCard: React.FC<{ post: Post; accentClass: string; tagLabel: string; ta
   </Link>
 );
 
+// Stat card — shows a live value or falls back gracefully while loading
+const StatCard: React.FC<{ number: string; label: string; icon: string; loading?: boolean }> = ({
+  number, label, icon, loading,
+}) => (
+  <div className="text-center">
+    <span className="text-2xl block mb-1">{icon}</span>
+    {loading ? (
+      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse mx-auto mb-1" />
+    ) : (
+      <p className="text-2xl md:text-3xl font-extrabold text-primary-600 leading-none">{number}</p>
+    )}
+    <p className="text-xs md:text-sm text-gray-500 mt-1">{label}</p>
+  </div>
+);
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
   const [scenarioPosts, setScenarioPosts] = useState<Post[]>([]);
   const [practicePosts, setPracticePosts] = useState<Post[]>([]);
   const [quizTopics, setQuizTopics] = useState<Topic[]>([]);
+  const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [loadingScenarios, setLoadingScenarios] = useState(true);
   const [loadingPractice, setLoadingPractice] = useState(true);
   const [loadingTopics, setLoadingTopics] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchAllData = useCallback(async () => {
-    setFetchError(false);
-    setLoadingPosts(true);
-    setLoadingScenarios(true);
-    setLoadingPractice(true);
-    setLoadingTopics(true);
-    try {
-      const [postsData] = await Promise.all([
-        fetchAllPosts(),
-      ]);
-      processPosts(postsData);
-    } catch {
-      setFetchError(true);
-      setLoadingPosts(false);
-      setLoadingScenarios(false);
-      setLoadingPractice(false);
-    }
-    fetchQuizTopics();
-  }, []);
-
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+  // ── Fetch helpers ────────────────────────────────────────────────────────────
 
   const fetchAllPosts = async (): Promise<Post[]> => {
     const response = await fetch(`${FIREBASE_URL}/posts`);
-    if (!response.ok) throw new Error('Failed to fetch posts');
+    if (!response.ok) throw new Error(`Posts fetch failed: ${response.status}`);
     const data = await response.json();
     if (!data.documents) return [];
     return data.documents.map((doc: any) => {
@@ -258,72 +267,131 @@ export const HomePage: React.FC = () => {
     });
   };
 
-  const processPosts = (allPosts: Post[]) => {
-    const general = allPosts
-      .filter(p =>
-        p.topic !== 'Practice Mode' &&
-        p.topic !== 'Practice Exam' &&
-        p.subCategory !== 'OSCE' &&
-        p.subCategory !== 'Clinical Scenario' &&
-        p.topic !== 'Clinical Scenario'
+  const fetchTopicsRaw = async (): Promise<Topic[]> => {
+    const response = await fetch(`${FIREBASE_URL}/topics`);
+    if (!response.ok) throw new Error(`Topics fetch failed: ${response.status}`);
+    const data = await response.json();
+    if (!data.documents) return [];
+    return data.documents.map((doc: any) => {
+      const f = doc.fields;
+      return {
+        id: doc.name.split('/').pop(),
+        subCategoryId: f.subCategoryId?.stringValue || '',
+        name: f.name?.stringValue || '',
+        description: f.description?.stringValue || '',
+        questionCount: Number(
+          f.questionCount?.integerValue ||
+          f.questionCount?.doubleValue ||
+          f.questionCount?.stringValue ||
+          0,
+        ),
+      };
+    });
+  };
+
+  const fetchCategoriesRaw = async (): Promise<number> => {
+    const response = await fetch(`${FIREBASE_URL}/categories`);
+    if (!response.ok) throw new Error(`Categories fetch failed: ${response.status}`);
+    const data = await response.json();
+    return data.documents?.length ?? 0;
+  };
+
+  // ── Process posts into sections ───────────────────────────────────────────
+
+  const processPosts = (all: Post[]) => {
+    const general = all
+      .filter(
+        (p) =>
+          p.topic !== 'Practice Mode' &&
+          p.topic !== 'Practice Exam' &&
+          p.subCategory !== 'OSCE' &&
+          p.subCategory !== 'Clinical Scenario' &&
+          p.topic !== 'Clinical Scenario',
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 9);
+
+    const scenarios = all
+      .filter(
+        (p) =>
+          p.subCategory === 'OSCE' ||
+          p.subCategory === 'Clinical Scenario' ||
+          p.topic === 'Clinical Scenario',
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 6);
+
+    const practice = all
+      .filter(
+        (p) =>
+          p.topic === 'Practice Mode' ||
+          p.topic === 'Practice Exam' ||
+          p.subCategory === 'Practice Mode' ||
+          p.title?.toLowerCase().includes('practice exam'),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 6);
+
     setLatestPosts(general);
-    setLoadingPosts(false);
-
-    const scenarios = allPosts
-      .filter(p =>
-        p.subCategory === 'OSCE' ||
-        p.subCategory === 'Clinical Scenario' ||
-        p.topic === 'Clinical Scenario'
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 6);
     setScenarioPosts(scenarios);
-    setLoadingScenarios(false);
-
-    const practice = allPosts
-      .filter(p =>
-        p.topic === 'Practice Mode' ||
-        p.topic === 'Practice Exam' ||
-        p.subCategory === 'Practice Mode' ||
-        p.title?.toLowerCase().includes('practice exam')
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 6);
     setPracticePosts(practice);
+    setLoadingPosts(false);
+    setLoadingScenarios(false);
     setLoadingPractice(false);
   };
 
-  const fetchQuizTopics = async () => {
+  // ── Main data loader — all fetches in one Promise.all ────────────────────
+
+  const fetchAllData = useCallback(async () => {
+    setFetchError(false);
+    setLoadingPosts(true);
+    setLoadingScenarios(true);
+    setLoadingPractice(true);
+    setLoadingTopics(true);
+    setLoadingStats(true);
+
     try {
-      const response = await fetch(`${FIREBASE_URL}/topics`);
-      if (!response.ok) throw new Error('Failed to fetch topics');
-      const data = await response.json();
-      if (data.documents) {
-        const allTopics = data.documents
-          .map((doc: any) => {
-            const f = doc.fields;
-            return {
-              id: doc.name.split('/').pop(),
-              subCategoryId: f.subCategoryId?.stringValue || '',
-              name: f.name?.stringValue || '',
-              description: f.description?.stringValue || '',
-              questionCount: Number(f.questionCount?.integerValue || f.questionCount?.stringValue || 0),
-            };
-          })
-          .filter((t: Topic) => t.questionCount > 0)
-          .sort((a: Topic, b: Topic) => b.questionCount - a.questionCount)
-          .slice(0, 10);
-        setQuizTopics(allTopics);
-      }
-    } catch (err) {
-      console.error('Failed to load topics:', err);
-    } finally {
+      const [allPosts, allTopics, categoryCount] = await Promise.all([
+        fetchAllPosts(),
+        fetchTopicsRaw(),
+        fetchCategoriesRaw(),
+      ]);
+
+      // Posts → sections
+      processPosts(allPosts);
+
+      // Quiz topics: top 10 by question count, only those with questions
+      const topTopics = allTopics
+        .filter((t) => t.questionCount > 0)
+        .sort((a, b) => b.questionCount - a.questionCount)
+        .slice(0, 10);
+      setQuizTopics(topTopics);
       setLoadingTopics(false);
+
+      // Live stats derived from real Firestore data
+      const totalQuestions = allTopics.reduce((sum, t) => sum + t.questionCount, 0);
+      setLiveStats({
+        questions: totalQuestions,
+        categories: categoryCount,
+      });
+      setLoadingStats(false);
+    } catch (err) {
+      console.error('Failed to load homepage data:', err);
+      setFetchError(true);
+      // Flip ALL loading states off so spinners don't hang forever
+      setLoadingPosts(false);
+      setLoadingScenarios(false);
+      setLoadingPractice(false);
+      setLoadingTopics(false);
+      setLoadingStats(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return 'Recently added';
@@ -352,11 +420,37 @@ export const HomePage: React.FC = () => {
     navigate(`/rapid-quiz?topic=${encodeURIComponent(topicName)}`);
   };
 
+  // ── Stats — live values with fallback labels ──────────────────────────────
+
+  const stats = [
+    {
+      number: liveStats
+        ? liveStats.questions > 0
+          ? `${liveStats.questions}+`
+          : '—'
+        : '…',
+      label: 'Practice Questions',
+      icon: '📝',
+    },
+    {
+      number: liveStats
+        ? liveStats.categories > 0
+          ? String(liveStats.categories)
+          : '—'
+        : '…',
+      label: 'Exam Categories',
+      icon: '📂',
+    },
+    { number: '100%', label: 'Free Access', icon: '🎓' },
+    { number: '24/7', label: 'Always Available', icon: '🌐' },
+  ];
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div>
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-primary-700 via-primary-600 to-blue-800 text-white relative overflow-hidden">
-        {/* Decorative circles */}
         <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/5 rounded-full pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full pointer-events-none" />
 
@@ -381,7 +475,7 @@ export const HomePage: React.FC = () => {
                   id="hero-search"
                   type="search"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search topics, questions, or study guides..."
                   className="flex-1 px-5 py-4 text-gray-900 text-base bg-transparent focus:outline-none"
                 />
@@ -414,28 +508,28 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Stats Banner ─────────────────────────────────────────────────── */}
+      {/* ── Stats Banner ─────────────────────────────────────────────────────── */}
       <section className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map(stat => (
-              <div key={stat.label} className="text-center">
-                <span className="text-2xl block mb-1">{stat.icon}</span>
-                <p className="text-2xl md:text-3xl font-extrabold text-primary-600 leading-none">{stat.number}</p>
-                <p className="text-xs md:text-sm text-gray-500 mt-1">{stat.label}</p>
-              </div>
+            {stats.map((stat) => (
+              <StatCard
+                key={stat.label}
+                number={stat.number}
+                label={stat.label}
+                icon={stat.icon}
+                loading={loadingStats && (stat.label === 'Practice Questions' || stat.label === 'Exam Categories')}
+              />
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Main Content ─────────────────────────────────────────────────── */}
+      {/* ── Main Content ──────────────────────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
 
         {/* Error Banner */}
-        {fetchError && (
-          <ErrorBanner onRetry={fetchAllData} />
-        )}
+        {fetchError && <ErrorBanner onRetry={fetchAllData} />}
 
         {/* Feature Cards */}
         <section>
@@ -444,14 +538,14 @@ export const HomePage: React.FC = () => {
             <p className="text-gray-500">Choose your study mode and start learning immediately</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map(feature => (
+            {features.map((feature) => (
               <Link
                 key={feature.title}
                 to={feature.link}
                 style={{ background: feature.bg, borderColor: feature.border }}
                 className="group p-6 rounded-2xl border-2 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onMouseEnter={e => (e.currentTarget.style.borderColor = feature.hoverBorder)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = feature.border)}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = feature.hoverBorder)}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = feature.border)}
               >
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 shadow-sm"
@@ -461,10 +555,7 @@ export const HomePage: React.FC = () => {
                 </div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">{feature.title}</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
-                <span
-                  className="mt-4 inline-block text-xs font-bold"
-                  style={{ color: feature.accent }}
-                >
+                <span className="mt-4 inline-block text-xs font-bold" style={{ color: feature.accent }}>
                   Get Started →
                 </span>
               </Link>
@@ -479,7 +570,7 @@ export const HomePage: React.FC = () => {
             <p className="text-gray-500">Tap to browse study material in each area</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {categoryLinks.map(cat => (
+            {categoryLinks.map((cat) => (
               <button
                 key={cat.label}
                 onClick={() => handleCategoryClick(cat.category)}
@@ -487,7 +578,9 @@ export const HomePage: React.FC = () => {
                 className="group text-center p-4 bg-white rounded-2xl border-2 border-gray-100 hover:border-primary-300 hover:shadow-md transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <span className="text-3xl block mb-2">{cat.icon}</span>
-                <p className="text-sm font-bold text-gray-800 group-hover:text-primary-600 transition-colors leading-tight">{cat.label}</p>
+                <p className="text-sm font-bold text-gray-800 group-hover:text-primary-600 transition-colors leading-tight">
+                  {cat.label}
+                </p>
                 <p className="text-xs text-gray-400 mt-1">{cat.desc}</p>
               </button>
             ))}
@@ -505,12 +598,12 @@ export const HomePage: React.FC = () => {
           />
           {loadingScenarios ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : scenarioPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {scenarioPosts.map(post => (
+                {scenarioPosts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -523,7 +616,10 @@ export const HomePage: React.FC = () => {
                 ))}
               </div>
               <div className="text-center mt-6 sm:hidden">
-                <Link to="/scenarios" className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                <Link
+                  to="/scenarios"
+                  className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+                >
                   View All Scenarios →
                 </Link>
               </div>
@@ -550,12 +646,12 @@ export const HomePage: React.FC = () => {
           />
           {loadingPractice ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : practicePosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {practicePosts.map(post => (
+                {practicePosts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -568,7 +664,10 @@ export const HomePage: React.FC = () => {
                 ))}
               </div>
               <div className="text-center mt-6 sm:hidden">
-                <Link to="/practice-exams" className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                <Link
+                  to="/practice-exams"
+                  className="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+                >
                   View All Practice Exams →
                 </Link>
               </div>
@@ -594,12 +693,12 @@ export const HomePage: React.FC = () => {
           />
           {loadingPosts ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : latestPosts.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {latestPosts.map(post => (
+                {latestPosts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -643,7 +742,7 @@ export const HomePage: React.FC = () => {
           />
           {loadingTopics ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[1, 2, 3, 4, 5].map(i => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse space-y-2">
                   <div className="h-5 bg-gray-100 rounded-full w-16" />
                   <div className="h-4 bg-gray-100 rounded w-full" />
@@ -654,7 +753,7 @@ export const HomePage: React.FC = () => {
           ) : quizTopics.length > 0 ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {quizTopics.map(topic => (
+                {quizTopics.map((topic) => (
                   <button
                     key={topic.id}
                     onClick={() => handleTopicQuizClick(topic.name)}
