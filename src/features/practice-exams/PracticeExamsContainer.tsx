@@ -16,17 +16,32 @@ interface Post {
 
 const FIREBASE_URL = 'https://firestore.googleapis.com/v1/projects/clinio-ai/databases/(default)/documents';
 
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+    <div className="h-44 bg-gradient-to-r from-gray-100 to-gray-200" />
+    <div className="p-5 space-y-3">
+      <div className="h-5 bg-gray-100 rounded-full w-20" />
+      <div className="h-5 bg-gray-100 rounded w-full" />
+      <div className="h-4 bg-gray-100 rounded w-3/4" />
+    </div>
+  </div>
+);
+
 export const PracticeExamsContainer: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetchPracticeExams();
   }, []);
 
   const fetchPracticeExams = async () => {
+    setError(false);
+    setLoading(true);
     try {
       const response = await fetch(`${FIREBASE_URL}/posts`);
+      if (!response.ok) throw new Error('Network error');
       const data = await response.json();
       if (data.documents) {
         const allPosts = data.documents.map((doc: any) => {
@@ -46,11 +61,14 @@ export const PracticeExamsContainer: React.FC = () => {
         });
 
         const practicePosts = allPosts
-          .filter((p: any) => 
-            p.topic === 'Practice Mode' || 
+          .filter((p: any) =>
+            p.topic === 'Practice Mode' ||
             p.topic === 'Practice Exam' ||
             p.subCategory === 'Practice Mode' ||
-            (p.title && (p.title.toLowerCase().includes('practice exam') || p.title.toLowerCase().includes('practice mode')))
+            (p.title && (
+              p.title.toLowerCase().includes('practice exam') ||
+              p.title.toLowerCase().includes('practice mode')
+            ))
           )
           .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
@@ -58,89 +76,96 @@ export const PracticeExamsContainer: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load practice exams:', err);
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
+    if (!dateStr) return 'Recently added';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Recently added';
     const now = new Date();
     const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Yesterday';
     if (diff < 7) return `${diff} days ago`;
-    return dateStr;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-600 border-t-transparent mx-auto"></div>
-        <p className="text-gray-400 mt-4">Loading practice exams...</p>
-      </div>
-    );
-  }
-
-  if (posts.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">📝 Practice Exams</h2>
-          <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
-        </div>
-        <div className="text-center py-16 bg-gray-50 rounded-xl">
-          <p className="text-5xl mb-4">📝</p>
-          <p className="text-gray-500 text-lg font-medium">No practice exams yet</p>
-          <p className="text-gray-400 text-sm mt-2">Check back soon for self-paced NCLEX and nursing practice tests!</p>
-          <Link to="/feed" className="text-primary-600 hover:underline text-sm mt-4 inline-block">← Back to Clinio Room</Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">📝 Practice Exams</h2>
-        <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales after each question</p>
+        <p className="text-gray-500 mt-1">Self-paced practice with instant feedback and detailed rationales</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {posts.map(post => (
-          <Link 
-            key={post.id} 
-            to={`/feed/${post.id}`} 
-            className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group border-l-4 border-l-blue-500"
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+        </div>
+      ) : error ? (
+        <div className="text-center py-16 bg-amber-50 rounded-2xl border border-amber-200">
+          <p className="text-4xl mb-3">⚠️</p>
+          <p className="text-amber-800 font-semibold">Could not load practice exams</p>
+          <p className="text-amber-600 text-sm mt-1 mb-4">Please check your connection and try again</p>
+          <button
+            onClick={fetchPracticeExams}
+            className="bg-amber-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
           >
-            {post.imageUrl ? (
-              <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" />
-            ) : (
-              <div className="w-full h-44 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                <span className="text-4xl">📝</span>
-              </div>
-            )}
-            <div className="p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium border border-blue-100">Practice Mode</span>
-                <span className="text-xs bg-gray-50 text-gray-600 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
-                {post.hasVideo && <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full font-medium">🎬</span>}
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{post.title}</h3>
-              <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{post.readTime}</span>
-                <span>{formatDate(post.createdAt)}</span>
-              </div>
-            </div>
+            Retry
+          </button>
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <p className="text-5xl mb-4">📝</p>
+          <p className="text-lg font-semibold text-gray-700">Practice exams coming soon</p>
+          <p className="text-gray-400 text-sm mt-1 mb-6">Full practice exam sets with rationales are being added regularly</p>
+          <Link to="/exam" className="inline-flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-primary-700 transition-colors text-sm">
+            Try Exam Mode Instead →
           </Link>
-        ))}
-      </div>
-
-      <div className="text-center pb-8">
-        <Link to="/feed" className="text-primary-600 hover:underline text-sm">← Back to Clinio Room</Link>
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {posts.map(post => (
+            <Link
+              key={post.id}
+              to={`/feed/${post.id}`}
+              className="group bg-white rounded-2xl overflow-hidden border border-gray-100 border-l-4 border-l-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col"
+            >
+              {post.imageUrl ? (
+                <img src={post.imageUrl} alt={post.title} className="w-full h-44 object-cover" loading="lazy" />
+              ) : (
+                <div className="w-full h-44 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                  <span className="text-5xl opacity-70">📝</span>
+                </div>
+              )}
+              <div className="p-5 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold border border-blue-100">Practice Mode</span>
+                  {post.category && (
+                    <span className="text-xs bg-gray-50 text-gray-500 px-2.5 py-1 rounded-full font-medium border border-gray-100">{post.category}</span>
+                  )}
+                  {post.hasVideo && (
+                    <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-medium border border-red-100">🎬 Video</span>
+                  )}
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors flex-1">
+                  {post.title}
+                </h3>
+                {post.preview && (
+                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{post.preview}</p>
+                )}
+                <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-3 border-t border-gray-50">
+                  <span>{post.readTime || '5 min'} · {formatDate(post.createdAt)}</span>
+                  <span className="text-blue-600 font-semibold group-hover:underline">Start Practice →</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
